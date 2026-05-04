@@ -1,0 +1,26 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: "#3056D3",
+        stroke: "#E2E8F0",
+        dark: "#1D2144",
+        "body-color": "#637381",
+        pink: "#EF466F",
+        blue: "#4437ff",
+      },
+      boxShadow: {
+        "1": "0px 1px 3px rgba(0, 0, 0, 0.1)",
+        "2": "0px 5px 15px rgba(0, 0, 0, 0.05)",
+        "3": "0px 10px 30px rgba(0, 0, 0, 0.08)",
+      }
+    },
+  },
+  plugins: [],
+}
+

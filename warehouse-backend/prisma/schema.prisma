@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Warehouse {
+  id        String    @id @default(uuid())
+  name      String
+  location  String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id          String    @id @default(uuid())
+  name        String
+  sku         String    @unique
+  quantity    Int       @default(0)
+  price       Float
+  warehouseId String
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  productId String
+  type      String   // IN or OUT
+  quantity  Int
+  date      DateTime @default(now())
+}

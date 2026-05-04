@@ -1,0 +1,55 @@
+@import '../../styles/helpers';
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  padding: 24px 16px;
+  border-right: 1px solid $neutrals6;
+  min-height: calc(100vh - 72px);
+  .dark-mode & { border-color: $neutrals3; }
+
+  @include t {
+    width: 100%;
+    min-height: auto;
+    border-right: none;
+    border-bottom: 1px solid $neutrals6;
+    padding: 12px;
+  }
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  @include t {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 4px;
+  }
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: $neutrals4;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    background: $neutrals7;
+    color: $neutrals2;
+    .dark-mode & { background: $neutrals3; color: $neutrals8; }
+  }
+
+  &.active {
+    background: $blue;
+    color: $white;
+    &:hover { background: $blue-dark; color: $white; }
+  }
+}

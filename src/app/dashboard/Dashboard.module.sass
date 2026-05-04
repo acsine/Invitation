@@ -1,0 +1,71 @@
+@use "../../styles/helpers" as *
+
+.section
+    padding: 64px 0
+    +m
+        padding: 40px 0
+
+.container
+    display: flex
+    align-items: flex-start
+    +t
+        display: block
+
+.sidebar
+    flex-shrink: 0
+    width: 256px
+    padding-right: 32px
+    border-right: 1px solid $neutrals6
+    +t
+        width: 100%
+        padding-right: 0
+        border-right: none
+        margin-bottom: 32px
+    +dark
+        border-color: $neutrals3
+
+.menu
+    display: flex
+    flex-direction: column
+    +t
+        flex-direction: row
+        overflow: auto
+        margin: 0 -32px
+        padding: 0 32px
+        &::-webkit-scrollbar
+            display: none
+
+.item
+    display: flex
+    align-items: center
+    height: 48px
+    padding: 0 20px
+    border-radius: 12px
+    +button-2
+    color: $neutrals4
+    transition: all .2s
+    &:hover
+        color: $neutrals2
+        background: $neutrals7
+        +dark
+            color: $neutrals8
+            background: $neutrals3
+    &.active
+        color: $white
+        background: $blue
+        box-shadow: 0 4px 12px rgba($blue, 0.25)
+        +dark
+            color: $white
+            background: $blue
+    svg
+        margin-right: 16px
+        fill: currentColor
+    +t
+        flex-shrink: 0
+        margin-right: 8px
+
+.content
+    flex-grow: 1
+    padding-left: 64px
+    +t
+        padding-left: 0
