@@ -8,118 +8,139 @@ import autoTable from 'jspdf-autotable';
 
 const GuestManagerTable = ({ event, guests: initialGuests }) => {
   const [guests] = useState(initialGuests);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingXML, setIsExportingXML] = useState(false);
+  
   const customFieldsConfig = JSON.parse(event.customFields || '[]');
   const attendanceDays = event.attendanceDays || 1;
 
-  const exportPDF = () => {
-    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4
-    const totalPagesExp = '{total_pages_count_string}';
-    
-    // Header setup
-    const pageWidth = doc.internal.pageSize.width;
-    
-    doc.setFontSize(22);
-    doc.setTextColor(40);
-    doc.text(`Liste des Invités de ${event.name}`, pageWidth / 2, 22, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Date du rapport : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' });
-    
-    doc.setFontSize(11);
-    doc.setTextColor(80);
-    const description = "Ce document contient la liste officielle des participants enregistrés ainsi que les cases d'émargement pour le suivi de présence journalier.";
-    doc.text(description, pageWidth / 2, 40, { align: 'center' });
-
-    // Headers - REMOVED Photo and Nom complet
-    const headers = [];
-    // Add custom fields to headers
-    customFieldsConfig.forEach(field => headers.push(field.label));
-    // Add attendance columns
-    for (let i = 1; i <= attendanceDays; i++) {
-      headers.push(`Jour ${i}`);
-    }
-
-    const tableData = guests.map(guest => {
-      const additionalData = JSON.parse(guest.additionalData || '{}');
-      const row = [];
-      
-      customFieldsConfig.forEach(field => {
-        const val = additionalData[field.name];
-        row.push(val === true ? 'OUI' : (val === false ? 'NON' : (val || '-')));
-      });
-
-      // Empty boxes for attendance
-      for (let i = 1; i <= attendanceDays; i++) {
-        row.push('');
-      }
-      return row;
-    });
-
-    autoTable(doc, {
-      head: [headers],
-      body: tableData,
-      startY: 48,
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 4, halign: 'center', valign: 'middle' },
-      headStyles: { fillColor: [31, 41, 55], textColor: 255, fontStyle: 'bold', fontSize: 10 },
-      alternateRowStyles: { fillColor: [249, 250, 251] },
-      columnStyles: {
-        // First columns (custom fields) might need left alignment
-        0: { halign: 'left' }
-      },
-      didDrawPage: (data) => {
-        // Footer with pagination
-        let str = 'Page ' + doc.internal.getNumberOfPages();
-        if (typeof doc.putTotalPages === 'function') {
-          str = str + ' sur ' + totalPagesExp;
-        }
+  const exportPDF = async () => {
+    setIsExportingPDF(true);
+    // Use setTimeout to allow the spinner to render before the heavy PDF task
+    setTimeout(() => {
+      try {
+        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4
+        const totalPagesExp = '{total_pages_count_string}';
+        
+        // Header setup
+        const pageWidth = doc.internal.pageSize.width;
+        
+        doc.setFontSize(22);
+        doc.setTextColor(40);
+        doc.text(`Liste des Invités de ${event.name}`, pageWidth / 2, 22, { align: 'center' });
+        
         doc.setFontSize(10);
-        const pageSize = doc.internal.pageSize;
-        const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-        doc.text(str, data.settings.margin.left, pageHeight - 10);
+        doc.setTextColor(100);
+        doc.text(`Date du rapport : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' });
+        
+        doc.setFontSize(11);
+        doc.setTextColor(80);
+        const description = "Ce document contient la liste officielle des participants enregistrés ainsi que les cases d'émargement pour le suivi de présence journalier.";
+        doc.text(description, pageWidth / 2, 40, { align: 'center' });
+
+        // Headers - REMOVED Photo and Nom complet
+        const headers = [];
+        // Add custom fields to headers
+        customFieldsConfig.forEach(field => headers.push(field.label));
+        // Add attendance columns
+        for (let i = 1; i <= attendanceDays; i++) {
+          headers.push(`Jour ${i}`);
+        }
+
+        const tableData = guests.map(guest => {
+          const additionalData = JSON.parse(guest.additionalData || '{}');
+          const row = [];
+          
+          customFieldsConfig.forEach(field => {
+            const val = additionalData[field.name];
+            row.push(val === true ? 'OUI' : (val === false ? 'NON' : (val || '-')));
+          });
+
+          // Empty boxes for attendance
+          for (let i = 1; i <= attendanceDays; i++) {
+            row.push('');
+          }
+          return row;
+        });
+
+        autoTable(doc, {
+          head: [headers],
+          body: tableData,
+          startY: 48,
+          theme: 'grid',
+          styles: { fontSize: 9, cellPadding: 4, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [31, 41, 55], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+          alternateRowStyles: { fillColor: [249, 250, 251] },
+          columnStyles: {
+            0: { halign: 'left' }
+          },
+          didDrawPage: (data) => {
+            let str = 'Page ' + doc.internal.getNumberOfPages();
+            if (typeof doc.putTotalPages === 'function') {
+              str = str + ' sur ' + totalPagesExp;
+            }
+            doc.setFontSize(10);
+            const pageSize = doc.internal.pageSize;
+            const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+            doc.text(str, data.settings.margin.left, pageHeight - 10);
+          }
+        });
+
+        if (typeof doc.putTotalPages === 'function') {
+          doc.putTotalPages(totalPagesExp);
+        }
+
+        doc.save(`rapport_invites_${event.name.replace(/\s+/g, '_')}.pdf`);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsExportingPDF(false);
       }
-    });
-
-    if (typeof doc.putTotalPages === 'function') {
-      doc.putTotalPages(totalPagesExp);
-    }
-
-    doc.save(`rapport_invites_${event.name.replace(/\s+/g, '_')}.pdf`);
+    }, 500);
   };
 
   const exportXML = () => {
-    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<event>\n';
-    xml += `  <id>${event.id}</id>\n`;
-    xml += `  <name>${escapeXml(event.name)}</name>\n`;
-    xml += '  <guests>\n';
+    setIsExportingXML(true);
+    
+    setTimeout(() => {
+      try {
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        xml += '<event>\n';
+        xml += `  <id>${event.id}</id>\n`;
+        xml += `  <name>${escapeXml(event.name)}</name>\n`;
+        xml += '  <guests>\n';
 
-    guests.forEach(guest => {
-      const additionalData = JSON.parse(guest.additionalData || '{}');
-      xml += '    <guest>\n';
-      xml += `      <id>${guest.id}</id>\n`;
-      xml += `      <name>${escapeXml(guest.name)}</name>\n`;
-      xml += `      <status>${guest.status}</status>\n`;
-      xml += `      <photo>${escapeXml(guest.photoUrl || '')}</photo>\n`;
-      xml += '      <additional_data>\n';
-      Object.entries(additionalData).forEach(([key, value]) => {
-        xml += `        <field name="${escapeXml(key)}">${escapeXml(String(value))}</field>\n`;
-      });
-      xml += '      </additional_data>\n';
-      xml += '    </guest>\n';
-    });
+        guests.forEach(guest => {
+          const additionalData = JSON.parse(guest.additionalData || '{}');
+          xml += '    <guest>\n';
+          xml += `      <id>${guest.id}</id>\n`;
+          xml += `      <name>${escapeXml(guest.name)}</name>\n`;
+          xml += `      <status>${guest.status}</status>\n`;
+          xml += `      <photo>${escapeXml(guest.photoUrl || '')}</photo>\n`;
+          xml += '      <additional_data>\n';
+          Object.entries(additionalData).forEach(([key, value]) => {
+            xml += `        <field name="${escapeXml(key)}">${escapeXml(String(value))}</field>\n`;
+          });
+          xml += '      </additional_data>\n';
+          xml += '    </guest>\n';
+        });
 
-    xml += '  </guests>\n';
-    xml += '</event>';
+        xml += '  </guests>\n';
+        xml += '</event>';
 
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `invites_${event.name.replace(/\s+/g, '_')}.xml`;
-    link.click();
-    URL.revokeObjectURL(url);
+        const blob = new Blob([xml], { type: 'application/xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `invites_${event.name.replace(/\s+/g, '_')}.xml`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsExportingXML(false);
+      }
+    }, 500);
   };
 
   function escapeXml(unsafe) {
@@ -143,16 +164,28 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
         </h3>
         <div className="flex gap-3">
            <button 
+            disabled={isExportingPDF}
             onClick={exportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-3 text-dark dark:text-white border border-stroke dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-4 transition text-sm font-bold shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-3 text-dark dark:text-white border border-stroke dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-4 transition text-sm font-bold shadow-sm disabled:opacity-50"
            >
-             <FiFileText className="text-red-500" /> PDF Rapport
+             {isExportingPDF ? (
+               <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+             ) : (
+               <FiFileText className="text-red-500" />
+             )}
+             {isExportingPDF ? 'Génération...' : 'PDF Rapport'}
            </button>
            <button 
+            disabled={isExportingXML}
             onClick={exportXML}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-3 text-dark dark:text-white border border-stroke dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-4 transition text-sm font-bold shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-3 text-dark dark:text-white border border-stroke dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-4 transition text-sm font-bold shadow-sm disabled:opacity-50"
            >
-             <FiDownload className="text-blue-500" /> XML Export
+             {isExportingXML ? (
+               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+             ) : (
+               <FiDownload className="text-blue-500" />
+             )}
+             {isExportingXML ? 'Exportation...' : 'XML Export'}
            </button>
         </div>
       </div>

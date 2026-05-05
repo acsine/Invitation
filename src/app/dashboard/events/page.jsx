@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import DeleteEventButton from '@/components/dashboard/DeleteEventButton';
+import ManageEventButton from '@/components/dashboard/ManageEventButton';
 import React from 'react';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
@@ -91,13 +92,10 @@ export default async function EventsPage() {
                 </div>
 
                 <div className="mt-auto grid grid-cols-2 gap-3">
-                  <AppLink 
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-xs font-black text-white uppercase tracking-widest hover:bg-primary transition-all shadow-lg" 
+                  <ManageEventButton 
                     href={`/dashboard/events/${event.id}`}
-                  >
-                    <FiSettings size={14} />
-                    Gérer
-                  </AppLink>
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-xs font-black text-white uppercase tracking-widest hover:bg-primary transition-all shadow-lg"
+                  />
                   <AppLink 
                     className="flex items-center justify-center gap-2 rounded-2xl bg-white border border-gray-100 py-4 text-xs font-black text-gray-900 uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-sm" 
                     href={`/invite/${event.shareCode}`} 
