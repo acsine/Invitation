@@ -270,61 +270,55 @@ export default function InvitePage({ params }) {
     
     setSharingPlatform(platform);
     try {
-      // 1. Generate the invitation image
+      // 1. Generate the invitation image locally
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
-      
-      // 2. Register guest and UPLOAD the generated image to ImageKit
-      const regRes = await fetch(`/api/guests`, {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `invitation_${event.name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+
+      // 2. Prepare sharing text
+      const shareUrl = window.location.href;
+      const shareText = `Salut ! 👋 Je viens de créer mon invitation personnalisée pour l'événement "${event.name}". 😍\n\nTu peux aussi générer la tienne ici :\n👉 ${shareUrl}`;
+
+      // 3. Native File Share (This attaches the REAL IMAGE)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Mon invitation pour ${event.name}`,
+            text: shareText
+          });
+          toast.success('Prêt à partager !');
+        } catch (err) {
+          if (err.name !== 'AbortError') throw err;
+        }
+      } else {
+        // Fallback: If native share fails or is not supported (Desktop)
+        // We download the image and copy the text
+        const link = document.createElement('a');
+        link.download = `invitation_${event.name}.png`;
+        link.href = dataUrl;
+        link.click();
+        
+        navigator.clipboard.writeText(shareText);
+        toast.success("Image téléchargée ! Collez le message pour partager.");
+      }
+
+      // 4. Background Sync (Save to cloud for the organizer)
+      fetch(`/api/guests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventId: event.id,
           name: guestName,
           photoUrl: guestPhoto,
-          generatedImageUrl: dataUrl, // Send the full invitation to the cloud
+          generatedImageUrl: dataUrl,
           saveToCloud: true 
         }),
-      });
+      }).catch(err => console.error("Sync error:", err));
 
-      const guestData = await regRes.json();
-      if (!regRes.ok) throw new Error(guestData.error || 'Erreur lors de l\'upload');
-
-      // 3. Prepare share content
-      const publicImageUrl = guestData.generatedImageUrl;
-      const shareUrl = window.location.href;
-      const shareText = `Salut ! 👋 Je viens de créer mon invitation personnalisée pour l'événement "${event.name}". J'ai vraiment hâte d'y être ! 😍\n\nTu peux aussi générer la tienne ici :\n👉 ${shareUrl}`;
-
-      // 4. Platform specific sharing
-      if (platform === 'whatsapp') {
-        const whatsappMsg = `${shareText}\n\nVoir mon invitation : ${publicImageUrl}`;
-        window.location.href = `https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`;
-      } else if (platform === 'facebook') {
-        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicImageUrl)}&quote=${encodeURIComponent(shareText)}`;
-        // If window.open is blocked, we fallback to location.href
-        const win = window.open(facebookUrl, '_blank');
-        if (!win) window.location.href = facebookUrl;
-      } else {
-        // General share (System sheet) - TEXT ONLY to avoid gesture issues with files
-        if (navigator.share) {
-          try {
-            await navigator.share({
-              title: `Invitation ${event.name}`,
-              text: shareText,
-              url: shareUrl 
-            });
-          } catch (err) {
-            // Fallback to clipboard
-            navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-            toast.success("Lien d'invitation copié !");
-          }
-        } else {
-          navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-          toast.success("Lien d'invitation copié !");
-        }
-      }
     } catch (error) {
       console.error('Share error:', error);
-      toast.error(error.message || 'Erreur lors du partage');
+      toast.error('Erreur lors du partage de l\'image');
     }
     setSharingPlatform(null);
   };
