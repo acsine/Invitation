@@ -4,6 +4,7 @@ import React from 'react';
 import Modal from '@/components/Modal';
 import Icon from '@/components/Icon';
 import cn from 'classnames';
+import Button from '../ui/Button';
 
 export default function DeleteConfirmationModal({ isOpen, onClose, onConfirm, eventName, loading }) {
   return (
@@ -27,27 +28,22 @@ export default function DeleteConfirmationModal({ isOpen, onClose, onConfirm, ev
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <button
+          <Button
             onClick={onClose}
-            className="flex-1 rounded-lg border border-stroke py-3 px-6 text-base font-semibold text-body-color hover:bg-gray-50 transition dark:border-white/10 dark:text-white/70 dark:hover:bg-dark-3"
+            variant="outline"
+            className="flex-1 rounded-lg py-3 !text-body-color"
             disabled={loading}
           >
             Annuler
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onConfirm}
-            className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-red-500 py-3 px-6 text-base font-semibold text-white hover:bg-opacity-90 transition disabled:bg-opacity-70"
-            disabled={loading}
+            loading={loading}
+            variant="danger"
+            className="flex-1 rounded-lg py-3"
           >
-            {loading ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-            ) : (
-              <>
-                <Icon name="trash" size="18" />
-                <span>Supprimer</span>
-              </>
-            )}
-          </button>
+            Supprimer
+          </Button>
         </div>
       </div>
     </Modal>

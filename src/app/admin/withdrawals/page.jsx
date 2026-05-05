@@ -5,10 +5,12 @@ import Loader from '@/components/Loader';
 import { FiCheck, FiX, FiClock, FiPhone } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import cn from 'classnames';
+import Button from '@/components/ui/Button';
 
 export default function AdminWithdrawals() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
     fetchWithdrawals();
@@ -25,6 +27,7 @@ export default function AdminWithdrawals() {
     const action = status === 'COMPLETED' ? 'Approuver' : 'Rejeter';
     if (!confirm(`${action} cette demande de retrait ?`)) return;
 
+    setProcessingId(id + status);
     const res = await fetch(`/api/admin/withdrawals`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -35,6 +38,7 @@ export default function AdminWithdrawals() {
       toast.success(`Demande ${status === 'COMPLETED' ? 'approuvée' : 'rejetée'}`);
       fetchWithdrawals();
     }
+    setProcessingId(null);
   };
 
   if (loading) return <div className="flex h-full items-center justify-center py-20"><Loader /></div>;
@@ -98,20 +102,22 @@ export default function AdminWithdrawals() {
                   <td className="p-8 text-right">
                     {w.status === 'PENDING' && (
                       <div className="flex justify-end gap-3">
-                        <button 
+                        <Button 
                           onClick={() => updateStatus(w.id, 'COMPLETED')}
-                          className="p-3 bg-green-50 text-green-600 rounded-2xl hover:bg-green-600 hover:text-white transition shadow-sm border border-green-100"
+                          className="p-3 bg-green-50 text-green-600 rounded-2xl hover:bg-green-600 hover:text-white transition shadow-sm border border-green-100 h-12 w-12"
                           title="Approuver"
+                          loading={processingId === w.id + 'COMPLETED'}
                         >
                           <FiCheck size={20} />
-                        </button>
-                        <button 
+                        </Button>
+                        <Button 
                           onClick={() => updateStatus(w.id, 'REJECTED')}
-                          className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition shadow-sm border border-red-100"
+                          className="p-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition shadow-sm border border-red-100 h-12 w-12"
                           title="Rejeter"
+                          loading={processingId === w.id + 'REJECTED'}
                         >
                           <FiX size={20} />
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </td>

@@ -6,6 +6,7 @@ import cn from 'classnames';
 import { usePathname } from 'next/navigation';
 import { useStateContext } from '@/utils/context/StateContext';
 import Loader from '@/components/Loader';
+import Button from '@/components/ui/Button';
 import { FiLogOut, FiHome, FiCalendar, FiCreditCard, FiDollarSign, FiPieChart, FiMenu, FiX, FiLayers } from 'react-icons/fi';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -98,13 +99,14 @@ export default function DashboardLayout({ children }) {
               </AppLink>
             )}
 
-            <button
+            <Button
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="flex w-full items-center gap-4 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-50 hover:text-red-600 transition-all duration-300"
+              variant="ghost"
+              className="flex w-full items-center gap-4 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest !text-red-400 hover:!bg-red-50 hover:!text-red-600 transition-all duration-300 h-auto"
             >
               <FiLogOut size={20} />
               <span>Déconnexion</span>
-            </button>
+            </Button>
           </div>
         </div>
       </aside>
@@ -118,12 +120,13 @@ export default function DashboardLayout({ children }) {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-black">I</div>
               <span className="text-sm font-black tracking-tighter uppercase">InviteManager</span>
            </div>
-           <button 
+           <Button 
              onClick={() => setSidebarVisible(!sidebarVisible)}
-             className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-900 shadow-sm"
+             variant="ghost"
+             className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-900 shadow-sm p-0"
            >
               {sidebarVisible ? <FiX size={20} /> : <FiMenu size={20} />}
-           </button>
+           </Button>
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">

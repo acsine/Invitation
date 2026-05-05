@@ -5,6 +5,7 @@ import Loader from '@/components/Loader';
 import { FiTrash2, FiShield, FiUser, FiSearch, FiBan, FiPlusCircle, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import cn from 'classnames';
+import Button from '@/components/ui/Button';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -15,6 +16,7 @@ export default function AdminUsers() {
   // Modals state
   const [showPlanModal, setShowPlanModal] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -39,6 +41,7 @@ export default function AdminUsers() {
       message: `Voulez-vous vraiment passer ${user.name || user.email} en tant que ${newRole} ?`,
       type: 'primary',
       onConfirm: async () => {
+        setIsConfirming(true);
         const res = await fetch(`/api/admin/users`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -48,6 +51,7 @@ export default function AdminUsers() {
           toast.success('Rôle mis à jour');
           fetchData();
         }
+        setIsConfirming(false);
         setConfirmModal(null);
       }
     });
@@ -59,17 +63,20 @@ export default function AdminUsers() {
       message: `Attention : Toutes les données de ${user.email} seront définitivement supprimées. Cette action est irréversible.`,
       type: 'danger',
       onConfirm: async () => {
+        setIsConfirming(true);
         const res = await fetch(`/api/admin/users?id=${user.id}`, { method: 'DELETE' });
         if (res.ok) {
           toast.success('Utilisateur supprimé');
           fetchData();
         }
+        setIsConfirming(false);
         setConfirmModal(null);
       }
     });
   };
 
   const applyPlan = async (userId, planId) => {
+    setIsConfirming(true);
     const res = await fetch(`/api/admin/users/subscription`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,6 +88,7 @@ export default function AdminUsers() {
       setShowPlanModal(null);
       fetchData();
     }
+    setIsConfirming(false);
   };
 
   const filteredUsers = users.filter(u => 
@@ -194,10 +202,12 @@ export default function AdminUsers() {
             </div>
             <div className="p-10 space-y-4">
                {plans.map(plan => (
-                 <button 
+                 <Button 
                    key={plan.id}
                    onClick={() => applyPlan(showPlanModal.id, plan.id)}
-                   className="w-full flex items-center justify-between p-6 bg-gray-50/50 rounded-3xl border border-gray-100 hover:border-primary hover:bg-white hover:shadow-xl hover:shadow-primary/5 transition-all group text-left"
+                   variant="ghost"
+                   loading={isConfirming}
+                   className="w-full flex items-center justify-between p-6 bg-gray-50/50 rounded-3xl border border-gray-100 hover:border-primary hover:bg-white hover:shadow-xl hover:shadow-primary/5 transition-all group text-left h-auto"
                  >
                    <div>
                      <div className="text-sm font-black text-gray-900 uppercase tracking-widest">{plan.name}</div>
@@ -206,7 +216,7 @@ export default function AdminUsers() {
                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                      <FiCheckCircle size={18} />
                    </div>
-                 </button>
+                 </Button>
                ))}
             </div>
           </div>
@@ -229,15 +239,14 @@ export default function AdminUsers() {
                 {confirmModal.message}
               </p>
               <div className="flex flex-col gap-4">
-                <button 
+                <Button 
                   onClick={confirmModal.onConfirm}
-                  className={cn(
-                    "w-full py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-xs transition-all shadow-xl",
-                    confirmModal.type === 'danger' ? "bg-red-500 text-white shadow-red-500/20 hover:bg-red-600" : "bg-primary text-white shadow-primary/20 hover:bg-opacity-90"
-                  )}
+                  loading={isConfirming}
+                  variant={confirmModal.type === 'danger' ? 'danger' : 'primary'}
+                  className="w-full py-5 rounded-[24px] text-xs h-14"
                 >
                   Confirmer
-                </button>
+                </Button>
                 <button 
                   onClick={() => setConfirmModal(null)}
                   className="w-full py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-xs text-gray-400 hover:text-gray-900 transition-colors"

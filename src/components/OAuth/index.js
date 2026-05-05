@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import cn from 'classnames'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Loader from '../Loader'
+import Button from '../ui/Button'
 import registerFields from '../../utils/constants/registerFields'
 
 const OAuth = ({ className, handleClose, disable }) => {
@@ -13,6 +13,7 @@ const OAuth = ({ className, handleClose, disable }) => {
   const [{ email, password }, setFields] = useState(() => registerFields)
   const [fillFiledMessage, setFillFiledMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [returnLoading, setReturnLoading] = useState(false)
 
   const inputElement = useRef(null)
 
@@ -23,6 +24,7 @@ const OAuth = ({ className, handleClose, disable }) => {
   }, [disable])
 
   const handleGoHome = () => {
+    setReturnLoading(true)
     push('/')
   }
 
@@ -105,21 +107,24 @@ const OAuth = ({ className, handleClose, disable }) => {
           />
         </div>
         <div className="mb-10">
-          <button 
+          <Button 
             type="submit" 
-            className="w-full cursor-pointer rounded-md border border-primary bg-primary py-3 px-5 text-base font-medium text-white transition hover:bg-opacity-90 flex items-center justify-center"
+            className="w-full h-12"
+            loading={loading}
           >
-            {loading ? <Loader /> : 'Se connecter'}
-          </button>
+            Se connecter
+          </Button>
         </div>
         <div>
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={disable ? handleGoHome : handleClose}
-            className="w-full cursor-pointer rounded-md border border-stroke bg-transparent py-3 px-5 text-base font-medium text-body-color transition hover:border-primary hover:bg-primary hover:text-white"
+            loading={returnLoading}
+            className="w-full h-12 border-stroke !text-body-color hover:!border-primary hover:!text-primary"
           >
             {disable ? 'Retour à l\'accueil' : 'Annuler'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

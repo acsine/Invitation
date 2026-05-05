@@ -4,10 +4,11 @@ import React, { useState, useEffect, useRef, use } from 'react';
 import cn from 'classnames';
 import Icon from '@/components/Icon';
 import Loader from '@/components/Loader';
+import Button from '@/components/ui/Button';
 import { toast } from 'react-hot-toast';
 import { Stage, Layer, Rect, Text, Image as KonvaImage, Group } from 'react-konva';
 import useImage from 'use-image';
-import { FiUpload, FiDownload, FiUser, FiCamera, FiShare2 } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiUser, FiCamera, FiShare2, FiZap } from 'react-icons/fi';
 import { FaWhatsapp, FaFacebook, FaShareAlt } from 'react-icons/fa';
 
 const PosterRenderer = ({ event, guestName, guestPhoto, stageRef, stageSize }) => {
@@ -105,6 +106,33 @@ const PosterRenderer = ({ event, guestName, guestPhoto, stageRef, stageSize }) =
 
 export default function InvitePage({ params }) {
   const { shareCode } = use(params);
+  const [returnLoading, setReturnLoading] = useState(false);
+
+  if (shareCode?.toLowerCase() === 'demo') {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-white dark:bg-dark p-8 text-center animate-in fade-in duration-500">
+        <div className="w-24 h-24 bg-primary/10 rounded-[32px] flex items-center justify-center text-primary mb-8 shadow-xl shadow-primary/5">
+          <FiZap size={48} className="animate-pulse" />
+        </div>
+        <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-4 tracking-tighter uppercase">Démo non disponible</h1>
+        <p className="text-gray-500 font-medium max-w-md leading-relaxed">
+          Cette fonctionnalité de démonstration est en cours de maintenance. <br/> 
+          Revenez très bientôt pour découvrir la puissance de notre système d'invitation !
+        </p>
+        <Button 
+          onClick={() => {
+            setReturnLoading(true);
+            window.location.href = '/';
+          }}
+          loading={returnLoading}
+          className="mt-12 px-10 py-5 bg-gray-900 text-white rounded-2xl h-auto"
+        >
+          Retour à l'accueil
+        </Button>
+      </div>
+    );
+  }
+
   const [event, setEvent] = useState(null);
   const [guestName, setGuestName] = useState('');
   const [guestPhoto, setGuestPhoto] = useState(null);

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { FiDollarSign, FiPhone, FiCheckCircle, FiClock, FiXCircle, FiTrendingUp, FiCreditCard } from 'react-icons/fi';
 import cn from 'classnames';
-import Loader from '@/components/Loader';
+import Button from '@/components/ui/Button';
 
 export default function WithdrawalForm({ availableBalance }) {
   const [amount, setAmount] = useState('');
@@ -91,13 +91,13 @@ export default function WithdrawalForm({ availableBalance }) {
           </div>
         </div>
 
-        <button 
+        <Button 
           type="submit"
-          disabled={loading}
-          className="w-full h-16 bg-primary text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+          loading={loading}
+          className="w-full h-16 rounded-[24px]"
         >
-          {loading ? <Loader className="!h-5 !w-5" /> : 'Confirmer le retrait'}
-        </button>
+          Confirmer le retrait
+        </Button>
       </form>
     </div>
   );

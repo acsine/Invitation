@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import Button from '@/components/ui/Button';
 import Loader from '@/components/Loader';
 import { toast } from 'react-hot-toast';
 import cn from 'classnames';
@@ -11,6 +12,7 @@ export default function SubscriptionPage() {
   const { data: session } = useSession();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subLoading, setSubLoading] = useState(null);
 
   useEffect(() => {
     fetch('/api/plans')
@@ -21,8 +23,12 @@ export default function SubscriptionPage() {
       });
   }, []);
 
-  const handleSubscribe = (planId) => {
+  const handleSubscribe = async (planId) => {
+    setSubLoading(planId);
+    // Simulate redirection delay
+    await new Promise(r => setTimeout(r, 1000));
     toast.success("Redirection vers le paiement sécurisé...");
+    setSubLoading(null);
   };
 
   if (loading) return (
@@ -120,18 +126,14 @@ export default function SubscriptionPage() {
                 )}
               </div>
 
-              <button
+              <Button
                 disabled={isActive}
+                loading={subLoading === plan.id}
                 onClick={() => handleSubscribe(plan.id)}
-                className={cn(
-                  "w-full h-16 rounded-[24px] mt-12 text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2",
-                  isActive
-                    ? 'bg-gray-100 text-gray-400 cursor-default'
-                    : 'bg-primary text-white hover:scale-[1.02] active:scale-95 shadow-xl shadow-primary/20'
-                )}
+                className="w-full h-16 rounded-[24px] mt-12"
               >
                 {isActive ? 'Plan Actif' : 'Choisir ce plan'}
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -149,9 +151,12 @@ export default function SubscriptionPage() {
               Pour les événements de grande envergure (+5 000 invités) ou les besoins institutionnels, contactez nos experts pour un devis personnalisé.
             </p>
           </div>
-          <button className="h-16 px-10 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-primary hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group">
+          <Button 
+            className="h-16 px-10 rounded-2xl"
+            variant="secondary"
+          >
             <FiShield className="group-hover:rotate-12 transition-transform" /> Contacter le support
-          </button>
+          </Button>
         </div>
       </div>
     </div>

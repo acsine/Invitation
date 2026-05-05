@@ -6,6 +6,7 @@ import cn from 'classnames';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Icon from '@/components/Icon';
+import FullPageLoader from '@/components/FullPageLoader';
 
 export default function NewEventPage() {
   const [name, setName] = useState('');
@@ -110,15 +111,10 @@ export default function NewEventPage() {
       </div>
 
       <div className="min-h-[700px] mb-12">
-        <PosterEditor onSave={handleSave} />
+        <PosterEditor onSave={handleSave} loading={loading} />
       </div>
       
-      {loading && (
-        <div className="fixed inset-0 bg-white/80 dark:bg-dark/80 backdrop-blur-sm flex flex-col items-center justify-center z-[1000] transition-opacity duration-200">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-          <div className="text-xl font-bold text-dark dark:text-white">Création de l'événement en cours...</div>
-        </div>
-      )}
+      {loading && <FullPageLoader message="Création de l'événement en cours..." />}
     </div>
   );
 }

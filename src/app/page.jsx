@@ -4,11 +4,36 @@ import React from 'react';
 import AppLink from '../components/AppLink';
 import Image from 'next/image';
 import { FiCheck, FiZap, FiTarget, FiUsers, FiAward, FiArrowRight, FiPlay, FiStar } from 'react-icons/fi';
+import { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import Button from '../components/ui/Button';
+import FullPageLoader from '@/components/FullPageLoader';
 import Footers from '../components/Footer';
 
 export default function Home() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [navLoading, setNavLoading] = useState(null);
+  const [isNavigatingLoader, setIsNavigatingLoader] = useState(false);
+
+  useEffect(() => {
+    setNavLoading(null);
+  }, [pathname]);
+
+  const handleNav = (url) => {
+    if (pathname !== url) {
+      if (url === '/auth/login') {
+        setIsNavigatingLoader(true);
+        setTimeout(() => router.push(url), 800);
+      } else {
+        setNavLoading(url);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden selection:bg-primary selection:text-white">
+      {isNavigatingLoader && <FullPageLoader message="Initialisation de la session..." />}
       
       {/* --- Animated Background Elements --- */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -28,10 +53,23 @@ export default function Home() {
             <a href="#pricing" className="text-sm font-bold text-gray-500 hover:text-primary transition-all relative group">Tarifs<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" /></a>
             <a href="#demo" className="text-sm font-bold text-gray-500 hover:text-primary transition-all relative group">Démo<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" /></a>
             <div className="h-6 w-px bg-gray-200 mx-2" />
-            <AppLink href="/auth/login" className="text-sm font-bold text-gray-900 hover:text-primary transition-colors">Connexion</AppLink>
-            <AppLink href="/auth/register" className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-primary hover:scale-105 active:scale-95 transition-all">
+            <Button 
+              variant="ghost"
+              href="/auth/login"
+              onClick={() => handleNav('/auth/login')}
+              loading={navLoading === '/auth/login'}
+              className="text-sm font-bold text-gray-900 hover:text-primary transition-colors h-auto p-0"
+            >
+              Connexion
+            </Button>
+            <Button 
+              href="/auth/register"
+              onClick={() => handleNav('/auth/register')}
+              loading={navLoading === '/auth/register'}
+              className="px-8 py-4 bg-gray-900 text-white rounded-2xl h-auto"
+            >
               Démarrer
-            </AppLink>
+            </Button>
           </div>
         </div>
       </nav>
@@ -57,12 +95,23 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center pt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
-              <AppLink href="/auth/register" className="px-14 py-7 bg-primary text-white rounded-[28px] font-black text-sm uppercase tracking-widest shadow-[0_25px_60px_rgba(59,130,246,0.4)] hover:scale-105 hover:rotate-1 active:scale-95 transition-all flex items-center justify-center gap-3 group">
+              <Button 
+                href="/auth/register"
+                onClick={() => handleNav('/auth/register')}
+                loading={navLoading === '/auth/register'}
+                className="px-14 py-7 bg-primary text-white rounded-[28px] h-auto"
+              >
                 Créer un compte <FiArrowRight className="group-hover:translate-x-2 transition-transform" />
-              </AppLink>
-              <AppLink href="/invite/demo" className="px-14 py-7 bg-white/80 backdrop-blur-md text-gray-900 border-2 border-white rounded-[28px] font-black text-sm uppercase tracking-widest shadow-xl hover:border-primary transition-all flex items-center justify-center gap-3">
+              </Button>
+              <Button 
+                href="/invite/demo"
+                onClick={() => handleNav('/invite/demo')}
+                loading={navLoading === '/invite/demo'}
+                variant="outline"
+                className="px-14 py-7 rounded-[28px] h-auto"
+              >
                 <FiPlay /> Voir la démo
-              </AppLink>
+              </Button>
             </div>
           </div>
           {/* Full Width Immersive Image with Text Overlay */}
@@ -168,9 +217,14 @@ export default function Home() {
              Des mariages les plus intimes aux conférences internationales de 10 000 personnes.
            </p>
            <div className="pt-10">
-              <AppLink href="/auth/register" className="px-16 py-7 bg-white text-gray-900 rounded-[32px] font-black text-sm uppercase tracking-widest hover:scale-110 hover:-rotate-2 transition-all shadow-2xl">
+              <Button 
+                href="/auth/register"
+                onClick={() => handleNav('/auth/register')}
+                loading={navLoading === '/auth/register'}
+                className="px-16 py-7 bg-white text-gray-900 rounded-[32px] h-auto shadow-2xl"
+              >
                 Essayer gratuitement
-              </AppLink>
+              </Button>
            </div>
         </div>
       </section>

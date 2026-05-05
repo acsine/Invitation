@@ -3,17 +3,28 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import cn from 'classnames';
-import Loader from '@/components/Loader';
+import Button from '@/components/ui/Button';
 import AppLink from '@/components/AppLink';
 import Image from 'next/image';
 import { FiArrowLeft, FiCheck, FiUser, FiMail, FiLock, FiStar, FiZap } from 'react-icons/fi';
+import FullPageLoader from '@/components/FullPageLoader';
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [fields, setFields] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [error, setError] = useState('');
   const { push } = useRouter();
+
+  const handleLoginNav = (e) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    // Small delay to feel premium
+    setTimeout(() => {
+      push('/auth/login');
+    }, 800);
+  };
 
   const handleChange = (e) => {
     setFields({ ...fields, [e.target.name]: e.target.value });
@@ -51,6 +62,7 @@ export default function RegisterPage() {
 
   return (
     <div className="relative flex h-screen items-stretch overflow-hidden bg-gray-50">
+      {isNavigating && <FullPageLoader message="Vers la connexion..." />}
       
 
       {/* Left Side: Form Section */}
@@ -129,21 +141,23 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="w-full h-16 bg-primary text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
+                  loading={loading}
+                  className="w-full h-16 rounded-[24px] mt-4"
                 >
-                  {loading ? <Loader className="!h-5 !w-5" /> : (
-                    <>Démarrer l'aventure <FiArrowLeft className="rotate-180" /></>
-                  )}
-                </button>
+                  Démarrer l'aventure <FiArrowLeft className="rotate-180" />
+                </Button>
               </form>
 
               <div className="pt-8 text-center border-t border-gray-50">
                 <p className="text-sm font-medium text-gray-400">
                   Déjà membre ?{' '}
-                  <AppLink href="/auth/login" className="font-black text-primary hover:underline uppercase text-[10px] tracking-widest ml-2">
+                  <AppLink 
+                    href="/auth/login" 
+                    onClick={handleLoginNav}
+                    className="font-black text-primary hover:underline uppercase text-[10px] tracking-widest ml-2"
+                  >
                     Connectez-vous
                   </AppLink>
                 </p>
@@ -171,12 +185,13 @@ export default function RegisterPage() {
                       </li>
                     ))}
                   </ul>
-                  <button
+                  <Button
                     onClick={() => handleSelectPlan('free')}
-                    className="w-full h-14 rounded-2xl border-2 border-gray-100 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary hover:border-primary hover:text-white transition-all"
+                    variant="outline"
+                    className="w-full h-14 rounded-2xl border-2 border-gray-100 !bg-white hover:!bg-primary hover:!text-white"
                   >
                     Choisir ce plan
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Premium Plan */}
@@ -199,12 +214,12 @@ export default function RegisterPage() {
                       </li>
                     ))}
                   </ul>
-                  <button
+                  <Button
                     onClick={() => handleSelectPlan('premium')}
-                    className="w-full h-14 rounded-2xl bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                    className="w-full h-14 rounded-2xl"
                   >
                     M'abonner maintenant
-                  </button>
+                  </Button>
                 </div>
               </div>
 

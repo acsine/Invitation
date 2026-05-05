@@ -5,6 +5,7 @@ import cn from 'classnames'
 import AppLink from '../AppLink'
 import Icon from '../Icon'
 import Image from 'next/image'
+import Loader from '../Loader'
 import User from './User'
 import Theme from '../Theme'
 import Modal from '../Modal'
@@ -12,6 +13,9 @@ import OAuth from '../OAuth'
 import { useSession } from 'next-auth/react'
 import { useStateContext } from '../../utils/context/StateContext'
 import { HiMenuAlt2 } from 'react-icons/hi'
+import Button from '../ui/Button'
+import { useRouter, usePathname } from 'next/navigation'
+import { useEffect } from 'react'
 
 const Headers = ({ navigation: propNavigation }) => {
   const [visibleNav, setVisibleNav] = useState(false)
@@ -20,6 +24,27 @@ const Headers = ({ navigation: propNavigation }) => {
 
   const { data: session } = useSession();
   const user = session?.user;
+  const router = useRouter();
+  const pathname = usePathname();
+  const [navLoading, setNavLoading] = useState(null);
+
+  useEffect(() => {
+    setNavLoading(null);
+  }, [pathname]);
+
+  const handleNavClick = (url) => {
+    if (pathname !== url) {
+      setNavLoading(url);
+    }
+  };
+
+  const handleLoginClick = async () => {
+    setNavLoading('auth');
+    // Small delay to show spinner
+    await new Promise(r => setTimeout(r, 500));
+    setVisibleAuthModal(true);
+    setNavLoading(null);
+  };
 
   const defaultNavigation = {
     menu: [
@@ -71,9 +96,11 @@ const Headers = ({ navigation: propNavigation }) => {
                     <li key={index}>
                       <AppLink
                         href={x?.url || `/search`}
-                        className="flex py-2 text-base font-medium text-dark hover:text-primary dark:text-white lg:ml-12 lg:inline-flex"
+                        onClick={() => handleNavClick(x.url)}
+                        className="flex items-center gap-2 py-2 text-base font-medium text-dark hover:text-primary dark:text-white lg:ml-12 lg:inline-flex"
                       >
                         {x.title}
+                        {navLoading === x.url && <Loader className="!h-3 !w-3" />}
                       </AppLink>
                     </li>
                   ))}
@@ -84,12 +111,13 @@ const Headers = ({ navigation: propNavigation }) => {
                 {user ? (
                   <User user={user} />
                 ) : (
-                  <button
-                    onClick={() => setVisibleAuthModal(true)}
-                    className="rounded-md bg-primary py-2 px-6 text-sm font-medium text-white hover:bg-opacity-90 transition"
+                  <Button
+                    onClick={handleLoginClick}
+                    loading={navLoading === 'auth'}
+                    className="h-10 px-6 text-sm rounded-md"
                   >
                     Connexion
-                  </button>
+                  </Button>
                 )}
                 <button
                   onClick={() => setVisibleNav(!visibleNav)}

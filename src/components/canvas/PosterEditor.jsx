@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Rect, Circle, Text, Image as KonvaImage, Transformer, Star, RegularPolygon, Line, Group } from 'react-konva';
 import useImage from 'use-image';
 import { FiType, FiImage, FiTrash2, FiUser, FiCamera, FiUpload, FiCircle, FiSquare, FiStar, FiHexagon, FiMaximize, FiMinus, FiBold, FiItalic } from 'react-icons/fi';
+import Button from '../ui/Button';
 import { v4 as uuidv4 } from 'uuid';
 
 const ShapeRenderer = ({ shapeProps, isSelected, onSelect, onChange }) => {
@@ -290,7 +291,7 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
 };
 
 
-export default function PosterEditor({ initialData = {}, onSave }) {
+export default function PosterEditor({ initialData = {}, onSave, loading = false }) {
   const [bgImageSrc, setBgImageSrc] = useState(initialData.backgroundImageUrl || null);
   const [bgImage] = useImage(bgImageSrc);
   const [elements, setElements] = useState(() => {
@@ -399,9 +400,14 @@ export default function PosterEditor({ initialData = {}, onSave }) {
           </button>
         </div>
 
-        <button onClick={() => onSave({ backgroundImageUrl: bgImageSrc, zones: elements, designWidth: stageSize.width, designHeight: stageSize.height })} className="px-6 py-2 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl transition shadow-lg">
-          Enregistrer
-        </button>
+        <Button 
+          onClick={() => onSave({ backgroundImageUrl: bgImageSrc, zones: elements, designWidth: stageSize.width, designHeight: stageSize.height })} 
+          className="px-6 py-2 rounded-xl h-10"
+          variant="danger"
+          loading={loading}
+        >
+          {initialData.id ? 'Enregistrer les modifications' : 'Créer l\'événement'}
+        </Button>
       </div>
 
       <div className="flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#0E0E0F]">

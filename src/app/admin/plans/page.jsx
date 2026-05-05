@@ -146,26 +146,60 @@ export default function AdminPlans() {
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Nom du forfait</label>
-                  <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" />
+                  <input 
+                    name="name"
+                    required 
+                    value={formData.name} 
+                    onChange={e => setFormData(prev => ({...prev, name: e.target.value}))} 
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" 
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Prix (FCFA)</label>
-                  <input required type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" />
+                  <input 
+                    name="price"
+                    required 
+                    type="number" 
+                    value={formData.price} 
+                    onChange={e => setFormData(prev => ({...prev, price: e.target.value}))} 
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" 
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Max Événements</label>
-                  <input required type="number" value={formData.maxEvents} onChange={e => setFormData({...formData, maxEvents: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" />
+                  <input 
+                    name="maxEvents"
+                    required 
+                    type="number" 
+                    value={formData.maxEvents} 
+                    onChange={e => setFormData(prev => ({...prev, maxEvents: e.target.value}))} 
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" 
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Max Invités</label>
-                  <input required type="number" value={formData.maxGuests} onChange={e => setFormData({...formData, maxGuests: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" />
+                  <input 
+                    name="maxGuests"
+                    required 
+                    type="number" 
+                    value={formData.maxGuests} 
+                    onChange={e => setFormData(prev => ({...prev, maxGuests: e.target.value}))} 
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all" 
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Fonctionnalités (une par ligne)</label>
-                <textarea required rows={4} value={formData.features} onChange={e => setFormData({...formData, features: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all resize-none" />
+                <textarea 
+                  name="features"
+                  required 
+                  rows={4} 
+                  value={formData.features} 
+                  onChange={e => setFormData(prev => ({...prev, features: e.target.value}))} 
+                  className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-gray-900 text-sm font-bold focus:bg-white focus:border-primary focus:shadow-xl focus:shadow-primary/5 outline-none transition-all resize-none" 
+                />
               </div>
               <button className="w-full py-5 bg-primary text-white font-black uppercase tracking-[0.2em] rounded-3xl shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all text-xs mt-4">
                 {editingPlan ? 'Enregistrer les modifications' : 'Créer le forfait'}
