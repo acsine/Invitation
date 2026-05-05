@@ -28,6 +28,12 @@ export default async function FinancesPage() {
     orderBy: { createdAt: 'desc' },
   });
 
+  const totalWithdrawn = withdrawals
+    .filter(w => w.status === 'COMPLETED' || w.status === 'PENDING')
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const availableBalance = Math.max(0, totalEarnings - totalWithdrawn);
+
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
@@ -43,7 +49,7 @@ export default async function FinancesPage() {
                 <FiTrendingUp /> Revenus Disponibles
              </div>
              <div className="text-5xl font-black text-white tracking-tighter">
-                {totalEarnings.toLocaleString()} <span className="text-xl opacity-60">FCFA</span>
+                {availableBalance.toLocaleString()} <span className="text-xl opacity-60">FCFA</span>
              </div>
              <div className="pt-4 flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest">
                 <FiCheckCircle /> Prêt pour le retrait
@@ -68,7 +74,7 @@ export default async function FinancesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Withdrawal Form Section */}
-        <WithdrawalForm availableBalance={totalEarnings} />
+        <WithdrawalForm availableBalance={availableBalance} />
 
         {/* History Section */}
         <div className="bg-white p-10 rounded-[48px] border border-gray-100 shadow-sm flex flex-col">

@@ -24,7 +24,7 @@ export async function POST(req) {
         userId: session.user.id,
         amount: parseInt(amount),
         status: 'PENDING',
-        // In a real app, you might want to store the phone number in the request
+        mobileNumber: phone,
       }
     });
 
