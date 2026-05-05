@@ -7,8 +7,8 @@ export async function POST(request) {
   try {
     const { eventId, name, photoUrl, generatedImageUrl, saveToCloud } = await request.json();
 
-    if (!eventId || !name) {
-      return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
+    if (!eventId || (!name && !photoUrl)) {
+      return NextResponse.json({ error: 'Champs manquants (Nom ou Photo requis)' }, { status: 400 });
     }
 
     if (!isConfigured) {
@@ -43,7 +43,7 @@ export async function POST(request) {
       const guest = await prisma.guest.create({
         data: {
           eventId,
-          name,
+          name: name || 'Invité',
           photoUrl: finalPhotoUrl,
           generatedImageUrl: finalGeneratedUrl,
           status: 'PENDING',
