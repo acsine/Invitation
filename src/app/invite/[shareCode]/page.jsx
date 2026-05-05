@@ -154,6 +154,7 @@ export default function InvitePage({ params }) {
   const [event, setEvent] = useState(null);
   const [guestName, setGuestName] = useState('');
   const [guestPhoto, setGuestPhoto] = useState(null);
+  const [additionalData, setAdditionalData] = useState({});
   const [photoPos, setPhotoPos] = useState({ x: 0, y: 0 });
   const [photoZoom, setPhotoZoom] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -231,6 +232,15 @@ export default function InvitePage({ params }) {
       toast.error('Veuillez entrer votre nom OU ajouter une photo');
       return false;
     }
+    
+    // Validate custom fields
+    const config = JSON.parse(event.customFields || '[]');
+    for (const field of config) {
+      if (field.required && !additionalData[field.name]) {
+        toast.error(`Le champ "${field.label}" est obligatoire`);
+        return false;
+      }
+    }
     return true;
   };
 
@@ -253,6 +263,7 @@ export default function InvitePage({ params }) {
           eventId: event.id,
           name: guestName,
           photoUrl: guestPhoto,
+          additionalData: JSON.stringify(additionalData),
           saveToCloud: false 
         }),
       });
@@ -311,6 +322,7 @@ export default function InvitePage({ params }) {
           eventId: event.id,
           name: guestName,
           photoUrl: guestPhoto,
+          additionalData: JSON.stringify(additionalData),
           generatedImageUrl: dataUrl,
           saveToCloud: true 
         }),
@@ -376,6 +388,69 @@ export default function InvitePage({ params }) {
                 />
                 <p className="mt-2 text-[10px] text-gray-400 italic">Optionnel si vous ajoutez une photo</p>
               </div>
+
+              {/* Dynamic Custom Fields */}
+              {JSON.parse(event.customFields || '[]').map((field) => (
+                <div key={field.id}>
+                  <label className="mb-2 block text-sm font-bold text-dark">
+                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                  </label>
+                  
+                  {field.type === 'text' && (
+                    <input 
+                      type="text" 
+                      value={additionalData[field.name] || ''} 
+                      onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
+                      placeholder={`Entrez votre ${field.label.toLowerCase()}`}
+                      className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
+                      style={{ color: 'black' }}
+                    />
+                  )}
+
+                  {field.type === 'number' && (
+                    <input 
+                      type="number" 
+                      value={additionalData[field.name] || ''} 
+                      onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
+                      placeholder={`Entrez votre ${field.label.toLowerCase()}`}
+                      className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
+                      style={{ color: 'black' }}
+                    />
+                  )}
+
+                  {field.type === 'select' && (
+                    <select 
+                      value={additionalData[field.name] || ''} 
+                      onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
+                      className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
+                      style={{ color: 'black' }}
+                    >
+                      <option value="">Sélectionnez une option</option>
+                      {field.options.split(',').map((opt) => (
+                        <option key={opt} value={opt.trim()}>{opt.trim()}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {field.type === 'checkbox' && (
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={cn(
+                        "w-6 h-6 rounded border-2 flex items-center justify-center transition-all", 
+                        additionalData[field.name] ? "bg-primary border-primary" : "border-stroke group-hover:border-primary"
+                      )}>
+                        {additionalData[field.name] && <Icon name="check" size="14" fill="#FFF" />}
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        checked={additionalData[field.name] || false} 
+                        onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.checked })} 
+                        className="hidden" 
+                      />
+                      <span className="font-medium text-sm text-dark">{field.label}</span>
+                    </label>
+                  )}
+                </div>
+              ))}
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-dark">Votre photo</label>

@@ -12,7 +12,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    const { name, backgroundImageUrl, zones, designWidth, designHeight, isPaid, price, paymentMethod, paymentNumber } = await request.json();
+    const { name, backgroundImageUrl, zones, designWidth, designHeight, isPaid, price, paymentMethod, paymentNumber, customFields, attendanceDays } = await request.json();
 
     // Upload base64 to ImageKit if it's a new image
     let finalImageUrl = backgroundImageUrl;
@@ -44,12 +44,12 @@ export async function POST(request) {
         name,
         backgroundImageUrl: finalImageUrl,
         zones: JSON.stringify({ elements: zones, designWidth, designHeight }),
-
-
         isPaid: !!isPaid,
         price: price ? parseFloat(price) : 0,
         paymentMethod,
         paymentNumber,
+        customFields: customFields || '[]',
+        attendanceDays: attendanceDays || 1,
         shareCode: uuidv4().substring(0, 8),
       },
     });

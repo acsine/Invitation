@@ -52,6 +52,8 @@ model Event {
   paymentMethod     String?  // STRIPE, MOBILE_MONEY, MANUAL
   paymentNumber     String?
   shareCode         String   @unique
+  customFields      String   @default("[]") // Config JSON: [{name, label, type, required, options}]
+  attendanceDays    Int      @default(1)    // Number of check-in boxes for the report
   createdAt         DateTime @default(now())
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   guests            Guest[]
@@ -66,6 +68,7 @@ model Guest {
   generatedImageUrl String?
   status            String   @default("PENDING") // PENDING, PAID, CANCELLED
   transactionRef    String?
+  additionalData    String   @default("{}") // Values JSON: {field_name: value}
   submittedAt       DateTime @default(now())
   event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   payment           Payment?

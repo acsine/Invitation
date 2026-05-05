@@ -5,7 +5,7 @@ import imagekit, { isConfigured } from '@/lib/imagekit';
 
 export async function POST(request) {
   try {
-    const { eventId, name, photoUrl, generatedImageUrl, saveToCloud } = await request.json();
+    const { eventId, name, photoUrl, generatedImageUrl, additionalData, saveToCloud } = await request.json();
 
     if (!eventId || (!name && !photoUrl)) {
       return NextResponse.json({ error: 'Champs manquants (Nom ou Photo requis)' }, { status: 400 });
@@ -46,6 +46,7 @@ export async function POST(request) {
           name: name || 'Invité',
           photoUrl: finalPhotoUrl,
           generatedImageUrl: finalGeneratedUrl,
+          additionalData: additionalData || '{}',
           status: 'PENDING',
         },
       });

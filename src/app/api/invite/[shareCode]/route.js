@@ -15,6 +15,8 @@ export async function GET(request, { params }) {
         isPaid: true,
         price: true,
         paymentNumber: true,
+        customFields: true,
+        attendanceDays: true,
       },
     });
 
