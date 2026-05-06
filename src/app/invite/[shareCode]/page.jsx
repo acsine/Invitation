@@ -10,10 +10,12 @@ import { Stage, Layer, Rect, Circle, Text, Image as KonvaImage, Group } from 're
 import useImage from 'use-image';
 import { FiUpload, FiDownload, FiUser, FiCamera, FiShare2, FiZap } from 'react-icons/fi';
 import { FaWhatsapp, FaFacebook, FaShareAlt } from 'react-icons/fa';
+import QRCode from 'qrcode';
 
-const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onPhotoDrag, stageRef, stageSize }) => {
+const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onPhotoDrag, stageRef, stageSize, qrCodeData }) => {
   const [bgImg] = useImage(event.backgroundImageUrl || '', 'anonymous');
   const [userImg] = useImage(guestPhoto || '', 'anonymous');
+  const [qrImg] = useImage(qrCodeData || '', 'anonymous');
   
   const rawZones = JSON.parse(event.zones || '[]');
   const elements = Array.isArray(rawZones) ? rawZones : (rawZones.elements || []);
@@ -42,7 +44,20 @@ const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onP
             fontSize: (el.fontSize || 24) * scaleX,
           };
 
-          if (zone.type === 'text' || (zone.isDynamic && zone.type !== 'PHOTO')) {
+          if (zone.isDynamic && zone.type === 'QRCODE') {
+            return (
+              <Group key={zone.id} x={zone.x} y={zone.y} rotation={zone.rotation}>
+                <Rect width={zone.width} height={zone.height} fill="white" />
+                {qrImg ? (
+                  <KonvaImage image={qrImg} width={zone.width} height={zone.height} />
+                ) : (
+                  <Rect width={zone.width} height={zone.height} fill="#eee" />
+                )}
+              </Group>
+            );
+          }
+
+          if (zone.type === 'text' || (zone.isDynamic && zone.type !== 'PHOTO' && zone.type !== 'QRCODE')) {
             return (
               <Text
                 key={zone.id}
@@ -114,6 +129,25 @@ const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onP
               </Group>
             );
           }
+          if (zone.isDynamic && zone.type === 'QRCODE') {
+            return (
+              <Group key={zone.id} x={zone.x} y={zone.y} rotation={zone.rotation}>
+                <Rect width={zone.width} height={zone.height} fill="white" />
+                {qrImg && <KonvaImage image={qrImg} width={zone.width} height={zone.height} />}
+                {!qrImg && (
+                  <Text
+                    text="QR"
+                    fontSize={zone.width * 0.4}
+                    width={zone.width}
+                    height={zone.height}
+                    align="center"
+                    verticalAlign="middle"
+                    opacity={0.2}
+                  />
+                )}
+              </Group>
+            );
+          }
           return null; 
         })}
       </Layer>
@@ -160,8 +194,16 @@ export default function InvitePage({ params }) {
   const [loading, setLoading] = useState(true);
   const [sharingPlatform, setSharingPlatform] = useState(null); // null, 'whatsapp', 'facebook', 'all'
   const [stageSize, setStageSize] = useState({ width: 400, height: 600 });
+  const [qrCodeData, setQrCodeData] = useState(null);
   const containerRef = useRef();
   const stageRef = useRef();
+
+  useEffect(() => {
+    // Generate a temporary QR for preview
+    QRCode.toDataURL(`PREVIEW_${shareCode}_${Date.now()}`, { margin: 1 })
+      .then(url => setQrCodeData(url))
+      .catch(err => console.error(err));
+  }, [shareCode]);
 
   useEffect(() => {
     fetch(`/api/invite/${shareCode}`)
@@ -250,6 +292,16 @@ export default function InvitePage({ params }) {
     setSharingPlatform('all');
     
     try {
+      // 1. Generate unique guest ID if not exists
+      const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
+      
+      // 2. Regenerate QR code with real ID
+      const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1 });
+      setQrCodeData(realQrUrl);
+      
+      // Wait a bit for the canvas to update with the new QR
+      await new Promise(r => setTimeout(r, 100));
+
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
       const link = document.createElement('a');
       link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
@@ -260,6 +312,7 @@ export default function InvitePage({ params }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: tempId,
           eventId: event.id,
           name: guestName,
           photoUrl: guestPhoto,
@@ -281,16 +334,26 @@ export default function InvitePage({ params }) {
     
     setSharingPlatform(platform);
     try {
-      // 1. Generate the invitation image locally
+      // 1. Generate unique guest ID
+      const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
+      
+      // 2. Regenerate QR code with real ID
+      const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1 });
+      setQrCodeData(realQrUrl);
+      
+      // Wait a bit for the canvas to update with the new QR
+      await new Promise(r => setTimeout(r, 100));
+
+      // 3. Generate the invitation image locally
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `invitation_${event.name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
 
-      // 2. Prepare sharing text
+      // 4. Prepare sharing text
       const shareUrl = window.location.href;
       const shareText = `Salut ! 👋 Je viens de créer mon invitation personnalisée pour l'événement "${event.name}". 😍\n\nTu peux aussi générer la tienne ici :\n👉 ${shareUrl}`;
 
-      // 3. Native File Share (This attaches the REAL IMAGE)
+      // 5. Native File Share (This attaches the REAL IMAGE)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -314,11 +377,12 @@ export default function InvitePage({ params }) {
         toast.success("Image téléchargée ! Collez le message pour partager.");
       }
 
-      // 4. Background Sync (Save to cloud for the organizer)
+      // 6. Background Sync (Save to cloud for the organizer)
       fetch(`/api/guests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: tempId,
           eventId: event.id,
           name: guestName,
           photoUrl: guestPhoto,
@@ -354,6 +418,7 @@ export default function InvitePage({ params }) {
                 onPhotoDrag={setPhotoPos}
                 stageRef={stageRef} 
                 stageSize={stageSize} 
+                qrCodeData={qrCodeData}
               />
               {guestPhoto && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gray-900/80 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-2xl animate-bounce pointer-events-none whitespace-nowrap z-[60] border border-white/20">

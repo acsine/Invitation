@@ -16,7 +16,45 @@ export default function NewEventPage() {
   const [loading, setLoading] = useState(false);
   const [customFields, setCustomFields] = useState([]);
   const [attendanceDays, setAttendanceDays] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [sessionsPerDay, setSessionsPerDay] = useState(1);
+  const [sessionConfig, setSessionConfig] = useState([{ id: 1, name: 'Session 1', time: '08:00' }]);
   const router = useRouter();
+
+  const handleSessionsChange = (count) => {
+    const n = parseInt(count);
+    setSessionsPerDay(n);
+    const newConfig = Array.from({ length: n }, (_, i) => ({
+      id: i + 1,
+      name: `Session ${i + 1}`,
+      time: sessionConfig[i]?.time || '08:00'
+    }));
+    setSessionConfig(newConfig);
+  };
+
+  const updateSessionTime = (id, time) => {
+    setSessionConfig(sessionConfig.map(s => s.id === id ? { ...s, time } : s));
+  };
+
+  const calculateDays = (start, end) => {
+    if (!start || !end) return 1;
+    const s = new Date(start);
+    const e = new Date(end);
+    const diffTime = Math.abs(e - s);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return diffDays > 0 ? diffDays : 1;
+  };
+
+  const handleDateChange = (type, val) => {
+    if (type === 'start') {
+      setStartDate(val);
+      setAttendanceDays(calculateDays(val, endDate));
+    } else {
+      setEndDate(val);
+      setAttendanceDays(calculateDays(startDate, val));
+    }
+  };
 
   const addField = () => {
     setCustomFields([...customFields, { 
@@ -63,6 +101,10 @@ export default function NewEventPage() {
           paymentNumber,
           customFields: JSON.stringify(customFields),
           attendanceDays: parseInt(attendanceDays) || 1,
+          startDate,
+          endDate,
+          sessionsPerDay,
+          sessionConfig: JSON.stringify(sessionConfig),
         }),
       });
 
@@ -81,7 +123,7 @@ export default function NewEventPage() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full overflow-x-hidden">
       <div className="mb-10">
         <h2 className="text-2xl font-bold text-dark dark:text-white">Nouvel Événement</h2>
       </div>
@@ -100,6 +142,27 @@ export default function NewEventPage() {
           />
         </div>
         
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="mb-3 block text-sm font-bold text-dark dark:text-white uppercase tracking-wider">Date de début</label>
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => handleDateChange('start', e.target.value)}
+              className="w-full rounded-xl border border-stroke bg-transparent py-3 px-5 text-dark dark:text-white outline-none focus:border-primary transition"
+            />
+          </div>
+          <div>
+            <label className="mb-3 block text-sm font-bold text-dark dark:text-white uppercase tracking-wider">Date de fin</label>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => handleDateChange('end', e.target.value)}
+              className="w-full rounded-xl border border-stroke bg-transparent py-3 px-5 text-dark dark:text-white outline-none focus:border-primary transition"
+            />
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-6 items-center">
           <label className="flex items-center gap-3 cursor-pointer group">
             <div className={cn(
@@ -133,6 +196,36 @@ export default function NewEventPage() {
         </div>
         
         <div className="mt-8 pt-8 border-t border-stroke dark:border-white/10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-dark dark:text-white">Configuration des sessions</h3>
+              <p className="text-sm text-body-color">Définissez le nombre de sessions par jour (max 3)</p>
+            </div>
+            <select 
+              value={sessionsPerDay}
+              onChange={(e) => handleSessionsChange(e.target.value)}
+              className="rounded-xl border border-stroke bg-white dark:bg-dark py-2 px-4 text-sm font-bold text-dark dark:text-white outline-none focus:border-primary"
+            >
+              <option value="1">1 session par jour</option>
+              <option value="2">2 sessions par jour</option>
+              <option value="3">3 sessions par jour</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+            {sessionConfig.map((session) => (
+              <div key={session.id} className="p-4 bg-gray-50 dark:bg-dark/50 rounded-2xl border border-stroke dark:border-white/10">
+                <label className="block text-xs font-black uppercase text-gray-400 mb-2">Heure {session.name}</label>
+                <input 
+                  type="time" 
+                  value={session.time}
+                  onChange={(e) => updateSessionTime(session.id, e.target.value)}
+                  className="w-full rounded-lg border border-stroke bg-white dark:bg-dark py-2 px-3 text-sm font-bold text-dark dark:text-white outline-none focus:border-primary"
+                />
+              </div>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold text-dark dark:text-white">Collecte de données invités</h3>
@@ -223,22 +316,19 @@ export default function NewEventPage() {
             )}
           </div>
 
-          <div className="mt-8 pt-8 border-t border-stroke dark:border-white/10">
-            <label className="mb-3 block text-base font-medium text-dark dark:text-white">
-              Nombre de jours de l'événement (pour le rapport de présence)
-            </label>
-            <input 
-              type="number" 
-              min="1"
-              value={attendanceDays} 
-              onChange={(e) => setAttendanceDays(e.target.value)}
-              className="w-32 rounded-md border-[1.5px] border-stroke bg-transparent py-3 px-5 text-base text-body-color outline-none transition focus:border-primary"
-            />
+          <div className="mt-8 pt-8 border-t border-stroke dark:border-white/10 flex items-center justify-between">
+            <div>
+               <h3 className="text-xl font-bold text-dark dark:text-white">Nombre de jours calculé</h3>
+               <p className="text-sm text-body-color">Basé sur vos dates de début et de fin</p>
+            </div>
+            <div className="text-4xl font-black text-primary bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center border-2 border-primary/20 shadow-lg shadow-primary/10">
+              {attendanceDays}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="min-h-[700px] mb-12">
+      <div className="h-[800px] mb-12 sticky top-0 z-10 max-w-full overflow-x-hidden">
         <PosterEditor onSave={handleSave} loading={loading} />
       </div>
 

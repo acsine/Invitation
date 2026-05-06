@@ -129,7 +129,7 @@ export default function DashboardLayout({ children }) {
            </Button>
         </header>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-white">
           <div className="min-h-full p-8 md:p-12 animate-in fade-in duration-700">
              {children}
           </div>

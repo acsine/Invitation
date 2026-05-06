@@ -54,6 +54,10 @@ model Event {
   shareCode         String   @unique
   customFields      String   @default("[]") // Config JSON: [{name, label, type, required, options}]
   attendanceDays    Int      @default(1)    // Number of check-in boxes for the report
+  startDate         DateTime?
+  endDate           DateTime?
+  sessionsPerDay    Int      @default(1)    // Max 3
+  sessionConfig     String   @default("[]") // JSON string for session times/names
   createdAt         DateTime @default(now())
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   guests            Guest[]
@@ -69,6 +73,7 @@ model Guest {
   status            String   @default("PENDING") // PENDING, PAID, CANCELLED
   transactionRef    String?
   additionalData    String   @default("{}") // Values JSON: {field_name: value}
+  attendance        String   @default("{}") // JSON string for { "d1s1": true, ... }
   submittedAt       DateTime @default(now())
   event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   payment           Payment?

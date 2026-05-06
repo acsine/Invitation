@@ -5,92 +5,106 @@ import cn from 'classnames';
 import { FiUsers, FiCheckCircle, FiClock, FiDownload, FiFileText, FiCamera } from 'react-icons/fi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import AppLink from '@/components/AppLink';
 
 const GuestManagerTable = ({ event, guests: initialGuests }) => {
   const [guests] = useState(initialGuests);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingXML, setIsExportingXML] = useState(false);
   
+  const [pdfDaysPerPage, setPdfDaysPerPage] = useState(4);
   const customFieldsConfig = JSON.parse(event.customFields || '[]');
   const attendanceDays = event.attendanceDays || 1;
 
   const exportPDF = async () => {
     setIsExportingPDF(true);
-    // Use setTimeout to allow the spinner to render before the heavy PDF task
     setTimeout(() => {
       try {
-        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4
+        const sessionsPerDay = event.sessionsPerDay || 1;
+        const totalDays = event.attendanceDays || 1;
+        const daysPerPageSetting = parseInt(pdfDaysPerPage) || 4;
+        
+        // Calculate total columns on a page
+        const attendanceCols = daysPerPageSetting * sessionsPerDay;
+        const totalCols = customFieldsConfig.length + attendanceCols + 1; // +1 for Guest Name
+        const orientation = totalCols > 8 ? 'l' : 'p';
+
+        const doc = new jsPDF(orientation, 'mm', 'a4'); 
         const totalPagesExp = '{total_pages_count_string}';
-        
-        // Header setup
         const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
         
-        doc.setFontSize(22);
-        doc.setTextColor(40);
-        doc.text(`Liste des Invités de ${event.name}`, pageWidth / 2, 22, { align: 'center' });
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Date du rapport : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' });
-        
-        doc.setFontSize(11);
-        doc.setTextColor(80);
-        const description = "Ce document contient la liste officielle des participants enregistrés ainsi que les cases d'émargement pour le suivi de présence journalier.";
-        doc.text(description, pageWidth / 2, 40, { align: 'center' });
+        const totalPageGroups = Math.ceil(totalDays / daysPerPageSetting);
 
-        // Headers - REMOVED Photo and Nom complet
-        const headers = [];
-        // Add custom fields to headers
-        customFieldsConfig.forEach(field => headers.push(field.label));
-        // Add attendance columns
-        for (let i = 1; i <= attendanceDays; i++) {
-          headers.push(`Jour ${i}`);
-        }
+        for (let groupIdx = 0; groupIdx < totalPageGroups; groupIdx++) {
+          if (groupIdx > 0) doc.addPage();
 
-        const tableData = guests.map(guest => {
-          const additionalData = JSON.parse(guest.additionalData || '{}');
-          const row = [];
+          const startDay = groupIdx * daysPerPageSetting + 1;
+          const endDay = Math.min(startDay + daysPerPageSetting - 1, totalDays);
+
+          // Header setup
+          doc.setFontSize(22);
+          doc.setTextColor(40);
+          doc.text(`Liste des Invites de ${event.name}`, pageWidth / 2, 22, { align: 'center' });
           
-          customFieldsConfig.forEach(field => {
-            const val = additionalData[field.name];
-            row.push(val === true ? 'OUI' : (val === false ? 'NON' : (val || '-')));
+          doc.setFontSize(10);
+          doc.setTextColor(100);
+          doc.text(`Periode : Jours ${startDay} a ${endDay} - Genere le : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' });
+          
+          doc.setFontSize(11);
+          doc.setTextColor(80);
+          const description = "Liste des participants et suivi de presence (Check = Present).";
+          doc.text(description, pageWidth / 2, 40, { align: 'center' });
+
+          // Headers
+          const headers = ['Invite'];
+          customFieldsConfig.forEach(field => headers.push(field.label));
+          
+          for (let d = startDay; d <= endDay; d++) {
+            for (let s = 1; s <= sessionsPerDay; s++) {
+              headers.push(`J${d}-S${s}`);
+            }
+          }
+
+          const tableData = guests.map(guest => {
+            const additionalData = JSON.parse(guest.additionalData || '{}');
+            const attendanceMap = JSON.parse(guest.attendance || '{}');
+            const row = [guest.name];
+            
+            customFieldsConfig.forEach(field => {
+              const val = additionalData[field.name];
+              row.push(val === true ? 'OUI' : (val === false ? 'NON' : (val || '-')));
+            });
+
+            for (let d = startDay; d <= endDay; d++) {
+              for (let s = 1; s <= sessionsPerDay; s++) {
+                const key = `d${d}s${s}`;
+                row.push(attendanceMap[key] ? 'YES' : '');
+              }
+            }
+            return row;
           });
 
-          // Empty boxes for attendance
-          for (let i = 1; i <= attendanceDays; i++) {
-            row.push('');
-          }
-          return row;
-        });
-
-        autoTable(doc, {
-          head: [headers],
-          body: tableData,
-          startY: 48,
-          theme: 'grid',
-          styles: { fontSize: 9, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [31, 41, 55], textColor: 255, fontStyle: 'bold', fontSize: 10 },
-          alternateRowStyles: { fillColor: [249, 250, 251] },
-          columnStyles: {
-            0: { halign: 'left' }
-          },
-          didDrawPage: (data) => {
-            let str = 'Page ' + doc.internal.getNumberOfPages();
-            if (typeof doc.putTotalPages === 'function') {
-              str = str + ' sur ' + totalPagesExp;
+          autoTable(doc, {
+            head: [headers],
+            body: tableData,
+            startY: 48,
+            theme: 'grid',
+            styles: { fontSize: orientation === 'p' ? 7 : 8, cellPadding: 3, halign: 'center', valign: 'middle' },
+            headStyles: { fillColor: [31, 41, 55], textColor: 255, fontStyle: 'bold', fontSize: orientation === 'p' ? 8 : 9 },
+            alternateRowStyles: { fillColor: [249, 250, 251] },
+            columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+            didDrawPage: (data) => {
+              let str = 'Page ' + doc.internal.getNumberOfPages();
+              if (typeof doc.putTotalPages === 'function') str = str + ' sur ' + totalPagesExp;
+              doc.setFontSize(10);
+              doc.text(str, data.settings.margin.left, pageHeight - 10);
             }
-            doc.setFontSize(10);
-            const pageSize = doc.internal.pageSize;
-            const pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
-            doc.text(str, data.settings.margin.left, pageHeight - 10);
-          }
-        });
-
-        if (typeof doc.putTotalPages === 'function') {
-          doc.putTotalPages(totalPagesExp);
+          });
         }
 
-        doc.save(`rapport_invites_${event.name.replace(/\s+/g, '_')}.pdf`);
+        if (typeof doc.putTotalPages === 'function') doc.putTotalPages(totalPagesExp);
+        doc.save(`rapport_final_${event.name.replace(/\s+/g, '_')}.pdf`);
       } catch (err) {
         console.error(err);
       } finally {
@@ -162,7 +176,27 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
         <h3 className="text-xl font-bold text-dark dark:text-white flex items-center gap-2">
            <FiUsers className="text-primary" /> Liste des Invités ({guests.length})
         </h3>
-        <div className="flex gap-3">
+         <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-dark-3 rounded-lg border border-stroke dark:border-white/10">
+              <span className="text-[10px] font-black text-gray-400 uppercase">Jours / Page :</span>
+              <select 
+                value={pdfDaysPerPage} 
+                onChange={(e) => setPdfDaysPerPage(e.target.value)}
+                className="bg-transparent text-xs font-bold text-dark dark:text-white outline-none"
+              >
+                <option value="1">1 jour</option>
+                <option value="2">2 jours</option>
+                <option value="3">3 jours</option>
+                <option value="4">4 jours</option>
+                <option value="6">6 jours</option>
+              </select>
+            </div>
+            <AppLink 
+              href={`/dashboard/events/${event.id}/scanner`}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition text-sm font-bold shadow-lg shadow-primary/20"
+            >
+              <FiCamera /> Lancer le scanner
+            </AppLink>
            <button 
             disabled={isExportingPDF}
             onClick={exportPDF}

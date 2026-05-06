@@ -4,10 +4,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Rect, Circle, Text, Image as KonvaImage, Transformer, Star, RegularPolygon, Line, Group } from 'react-konva';
 import useImage from 'use-image';
 import { FiType, FiImage, FiTrash2, FiUser, FiCamera, FiUpload, FiCircle, FiSquare, FiStar, FiHexagon, FiMaximize, FiMinus, FiBold, FiItalic } from 'react-icons/fi';
+import { MdQrCode } from 'react-icons/md';
 import Button from '../ui/Button';
 import { v4 as uuidv4 } from 'uuid';
 
 const ShapeRenderer = ({ shapeProps, isSelected, onSelect, onChange }) => {
+// ... existing code ...
   const shapeRef = useRef();
   const trRef = useRef();
 
@@ -270,20 +272,33 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
         </Group>
 
         <Text
-          text={shapeProps.fieldKey ? `{${shapeProps.fieldKey}}` : (isPhoto ? 'ZONE_PHOTO' : 'ZONE_NOM')}
+          text={shapeProps.type === 'QRCODE' ? 'QR CODE' : (shapeProps.fieldKey ? `{${shapeProps.fieldKey}}` : (isPhoto ? 'ZONE_PHOTO' : 'ZONE_NOM'))}
           width={shapeProps.width}
           height={shapeProps.height}
           align="center"
           verticalAlign="middle"
-          fontSize={shapeProps.fontSize || 14}
+          fontSize={shapeProps.type === 'QRCODE' ? Math.min(shapeProps.width, shapeProps.height) * 0.15 : (shapeProps.fontSize || 14)}
           fontStyle={shapeProps.fontStyle || 'bold'}
           fontFamily={shapeProps.fontFamily || 'Poppins'}
-          fill={shapeProps.fill || (isPhoto ? '#3772FF' : '#EF4444')}
+          fill={shapeProps.type === 'QRCODE' ? '#000000' : (shapeProps.fill || (isPhoto ? '#3772FF' : '#EF4444'))}
           listening={false}
           shadowColor="white"
           shadowBlur={4}
           shadowOpacity={1}
         />
+        {shapeProps.type === 'QRCODE' && (
+           <Text
+           text="⬛"
+           fontSize={Math.min(shapeProps.width, shapeProps.height) * 0.5}
+           x={0}
+           y={0}
+           width={shapeProps.width}
+           height={shapeProps.height}
+           align="center"
+           verticalAlign="middle"
+           opacity={0.1}
+         />
+        )}
       </Group>
       {isSelected && <Transformer ref={trRef} />}
     </React.Fragment>
@@ -346,12 +361,14 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
     const id = uuidv4();
     setElements([...elements, {
       id, type, isDynamic: true, subType: 'rect',
-      x: 150, y: 150, width: type === 'PHOTO' ? 150 : 250, height: type === 'PHOTO' ? 150 : 50,
+      x: 150, y: 150, 
+      width: type === 'PHOTO' ? 150 : (type === 'QRCODE' ? 100 : 250), 
+      height: type === 'PHOTO' ? 150 : (type === 'QRCODE' ? 100 : 50),
       rotation: 0,
       fontFamily: 'Poppins',
       fontStyle: 'bold',
-      fontSize: 24,
-      fill: type === 'PHOTO' ? '#3772FF' : '#EF4444'
+      fontSize: type === 'QRCODE' ? 10 : 24,
+      fill: type === 'PHOTO' ? '#3772FF' : (type === 'QRCODE' ? '#000000' : '#EF4444')
     }]);
     setSelectedId(id);
   };
@@ -362,7 +379,7 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141416] border border-[#23262F] rounded-3xl overflow-hidden">
+    <div className="flex flex-col h-full bg-[#141416] border border-[#23262F] rounded-3xl overflow-hidden max-w-full">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between p-3 bg-[#1A1A1D] border-b border-[#23262F] gap-2">
         <div className="flex items-center gap-2">
@@ -398,6 +415,9 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
           <button onClick={() => addDynamicArea('PHOTO')} className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition text-xs font-bold">
             <FiCamera size={14} /> PHOTO
           </button>
+          <button onClick={() => addDynamicArea('QRCODE')} className="flex items-center gap-2 px-3 py-1.5 bg-gray-500/10 text-gray-400 border border-gray-500/20 rounded-lg hover:bg-gray-500/20 transition text-xs font-bold">
+            <MdQrCode size={14} /> QR CODE
+          </button>
         </div>
 
         <Button 
@@ -412,7 +432,7 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
 
       <div className="flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#0E0E0F]">
         {/* Canvas */}
-        <div ref={containerRef} className="flex-1 relative overflow-auto flex items-center justify-center p-8">
+        <div ref={containerRef} className="flex-1 min-w-0 relative overflow-auto flex items-center justify-center p-8">
           <div className="relative shadow-2xl">
             <Stage
               width={stageSize.width}
