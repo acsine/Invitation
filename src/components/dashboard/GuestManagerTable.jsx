@@ -170,6 +170,8 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
     });
   }
 
+  const [isNavigatingToScanner, setIsNavigatingToScanner] = useState(false);
+
   return (
     <div className="w-full">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -193,9 +195,15 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
             </div>
             <AppLink 
               href={`/dashboard/events/${event.id}/scanner`}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition text-sm font-bold shadow-lg shadow-primary/20"
+              onClick={() => setIsNavigatingToScanner(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition text-sm font-bold shadow-lg shadow-primary/20 disabled:opacity-70"
             >
-              <FiCamera /> Lancer le scanner
+              {isNavigatingToScanner ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <FiCamera />
+              )}
+              {isNavigatingToScanner ? 'Chargement...' : 'Lancer le scanner'}
             </AppLink>
            <button 
             disabled={isExportingPDF}
