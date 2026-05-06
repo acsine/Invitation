@@ -107,7 +107,7 @@ export default async function EventsPage() {
                   <DeleteEventButton 
                     eventId={event.id} 
                     eventName={event.name} 
-                    className="col-span-2 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-red-50/50 py-4 text-[10px] font-black text-red-500 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-100"
+                    className="col-span-2 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-red-500 py-4 text-[10px] font-black text-white uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 border-none"
                   />
                 </div>
               </div>

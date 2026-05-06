@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Rect, Circle, Text, Image as KonvaImage, Transformer, Star, RegularPolygon, Line, Group } from 'react-konva';
 import useImage from 'use-image';
-import { FiType, FiImage, FiTrash2, FiUser, FiCamera, FiUpload, FiCircle, FiSquare, FiStar, FiHexagon, FiMaximize, FiMinus, FiBold, FiItalic } from 'react-icons/fi';
+import { FiType, FiImage, FiTrash2, FiUser, FiCamera, FiUpload, FiCircle, FiSquare, FiStar, FiHexagon, FiMaximize, FiMinus, FiBold, FiItalic, FiSettings } from 'react-icons/fi';
 import { MdQrCode } from 'react-icons/md';
 import Button from '../ui/Button';
 import { v4 as uuidv4 } from 'uuid';
@@ -306,7 +306,7 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
 };
 
 
-export default function PosterEditor({ initialData = {}, onSave, loading = false }) {
+export default function PosterEditor({ initialData = {}, onSave, loading = false, customFields = [], saveText = null }) {
   const [bgImageSrc, setBgImageSrc] = useState(initialData.backgroundImageUrl || null);
   const [bgImage] = useImage(bgImageSrc);
   const [elements, setElements] = useState(() => {
@@ -357,10 +357,11 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
     setSelectedId(id);
   };
 
-  const addDynamicArea = (type) => {
+  const addDynamicArea = (type, fieldKey = null) => {
     const id = uuidv4();
     setElements([...elements, {
       id, type, isDynamic: true, subType: 'rect',
+      fieldKey,
       x: 150, y: 150, 
       width: type === 'PHOTO' ? 150 : (type === 'QRCODE' ? 100 : 250), 
       height: type === 'PHOTO' ? 150 : (type === 'QRCODE' ? 100 : 50),
@@ -401,7 +402,10 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
 
           <div className="w-px h-6 bg-[#353945] mx-1" />
 
-          <button onClick={() => addElement('text')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Texte"><FiType size={18} /></button>
+          <button onClick={() => addElement('text')} className="flex items-center gap-2 p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945] transition" title="Texte">
+            <FiType size={18} />
+            <span className="text-[10px] font-black uppercase">Texte Statique</span>
+          </button>
           <button onClick={() => addElement('rect')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Rectangle"><FiSquare size={18} /></button>
           <button onClick={() => addElement('circle')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Cercle"><FiCircle size={18} /></button>
           <button onClick={() => addElement('star')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Étoile"><FiStar size={18} /></button>
@@ -418,6 +422,16 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
           <button onClick={() => addDynamicArea('QRCODE')} className="flex items-center gap-2 px-3 py-1.5 bg-gray-500/10 text-gray-400 border border-gray-500/20 rounded-lg hover:bg-gray-500/20 transition text-xs font-bold">
             <MdQrCode size={14} /> QR CODE
           </button>
+
+          {customFields.map(field => (
+            <button 
+              key={field.name}
+              onClick={() => addDynamicArea('FIELD', field.name)} 
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg hover:bg-green-500/20 transition text-xs font-bold"
+            >
+              <FiSettings size={14} /> {field.label.toUpperCase()}
+            </button>
+          ))}
         </div>
 
         <Button 
@@ -426,7 +440,7 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
           variant="danger"
           loading={loading}
         >
-          {initialData.id ? 'Enregistrer les modifications' : 'Créer l\'événement'}
+          {saveText || (initialData.id ? 'Enregistrer les modifications' : 'Créer l\'événement')}
         </Button>
       </div>
 
@@ -550,7 +564,11 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
                               setElements(next);
                             }}
                           >
-                            {['Poppins', 'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'].map(font => (
+                            {[
+                              'Poppins', 'Inter', 'Roboto', 'Montserrat', 'Oswald', 'Playfair Display', 
+                              'Lato', 'Open Sans', 'Raleway', 'Ubuntu', 'Dancing Script', 'Pacifico',
+                              'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana'
+                            ].map(font => (
                               <option key={font} value={font} style={{ fontFamily: font }}>{font}</option>
                             ))}
                           </select>

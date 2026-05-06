@@ -6,6 +6,7 @@ import { FiUsers, FiCheckCircle, FiClock, FiDownload, FiFileText, FiCamera } fro
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import AppLink from '@/components/AppLink';
+import { FiPrinter } from 'react-icons/fi';
 
 const GuestManagerTable = ({ event, guests: initialGuests }) => {
   const [guests] = useState(initialGuests);
@@ -171,6 +172,7 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
   }
 
   const [isNavigatingToScanner, setIsNavigatingToScanner] = useState(false);
+  const [isNavigatingToBadge, setIsNavigatingToBadge] = useState(false);
 
   return (
     <div className="w-full">
@@ -204,6 +206,18 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
                 <FiCamera />
               )}
               {isNavigatingToScanner ? 'Chargement...' : 'Lancer le scanner'}
+            </AppLink>
+            <AppLink 
+              href={`/dashboard/events/${event.id}/badge`}
+              onClick={() => setIsNavigatingToBadge(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition text-sm font-bold shadow-lg disabled:opacity-70"
+            >
+              {isNavigatingToBadge ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <FiPrinter />
+              )}
+              {isNavigatingToBadge ? 'Chargement...' : 'Badges & Impression'}
             </AppLink>
            <button 
             disabled={isExportingPDF}
