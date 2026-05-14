@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useStateContext } from '@/utils/context/StateContext';
 import Loader from '@/components/Loader';
 import Button from '@/components/ui/Button';
-import { FiLogOut, FiHome, FiCalendar, FiCreditCard, FiDollarSign, FiPieChart, FiMenu, FiX, FiLayers } from 'react-icons/fi';
+import { FiLogOut, FiHome, FiCalendar, FiCreditCard, FiDollarSign, FiPieChart, FiMenu, FiX, FiLayers, FiActivity } from 'react-icons/fi';
 import { signOut, useSession } from 'next-auth/react';
 
 const menu = [
@@ -15,6 +15,7 @@ const menu = [
   { title: 'Mes Événements', icon: FiCalendar, url: '/dashboard/events' },
   { title: 'Abonnement', icon: FiLayers, url: '/dashboard/subscription' },
   { title: 'Finances', icon: FiDollarSign, url: '/dashboard/finances' },
+  { title: 'Logs d\'activité', icon: FiActivity, url: '/dashboard/logs' },
 ];
 
 export default function DashboardLayout({ children }) {

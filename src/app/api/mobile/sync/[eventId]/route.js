@@ -5,10 +5,21 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(request, { params }) {
   try {
     const { eventId } = await params;
-    const { guests } = await request.json();
+    const { guests, userId } = await request.json();
 
     if (!eventId || !Array.isArray(guests)) {
       return NextResponse.json({ error: 'Données de synchronisation invalides' }, { status: 400 });
+    }
+
+    // Log the activity
+    if (userId) {
+      await prisma.activityLog.create({
+        data: {
+          userId,
+          action: 'SYNC_GUESTS',
+          details: JSON.stringify({ eventId, guestCount: guests.length })
+        }
+      });
     }
 
     const results = {

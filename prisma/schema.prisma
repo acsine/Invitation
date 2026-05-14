@@ -12,13 +12,28 @@ model User {
   email         String   @unique
   name          String?
   password      String
-  role          String   @default("ORGANIZER") // ORGANIZER, ADMIN
+  role          String   @default("ORGANIZER") // ORGANIZER, ADMIN, STAFF
+  parentId      String?  // Link STAFF to an ORGANIZER
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   events        Event[]
   subscription  Subscription?
   withdrawalRequests WithdrawalRequest[]
   supportTickets     SupportTicket[]
+  activityLogs       ActivityLog[]
+  parent             User?     @relation("UserToStaff", fields: [parentId], references: [id])
+  staff              User[]    @relation("UserToStaff")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   // e.g., "SCAN_INVITATION", "SYNC_GUESTS"
+  details   String?  // JSON string
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
 }
 
 model SupportTicket {

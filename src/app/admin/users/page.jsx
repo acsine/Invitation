@@ -15,8 +15,10 @@ export default function AdminUsers() {
   
   // Modals state
   const [showPlanModal, setShowPlanModal] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'ORGANIZER', parentId: '' });
 
   useEffect(() => {
     fetchData();
@@ -91,6 +93,27 @@ export default function AdminUsers() {
     setIsConfirming(false);
   };
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setIsConfirming(true);
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    if (res.ok) {
+      toast.success('Utilisateur créé');
+      setShowCreateModal(false);
+      setFormData({ name: '', email: '', password: '', role: 'ORGANIZER', parentId: '' });
+      fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || 'Erreur lors de la création');
+    }
+    setIsConfirming(false);
+  };
+
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
     u.name?.toLowerCase().includes(search.toLowerCase())
@@ -104,6 +127,12 @@ export default function AdminUsers() {
         <div>
           <h2 className="text-4xl font-black text-gray-900 mb-2 tracking-tight">Utilisateurs</h2>
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em]">Gestion des comptes membres</p>
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="mt-4 flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-primary-dark transition shadow-lg shadow-primary/20"
+          >
+            <FiPlusCircle /> Nouveau Compte
+          </button>
         </div>
         <div className="relative w-full max-w-md group">
           <FiSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" />
@@ -144,9 +173,19 @@ export default function AdminUsers() {
                     </div>
                   </td>
                   <td className="p-8 text-center">
-                    <span className={cn("px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border", user.role === 'ADMIN' ? "bg-red-50 text-red-600 border-red-100" : "bg-primary/5 text-primary border-primary/10")}>
+                    <span className={cn(
+                      "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border", 
+                      user.role === 'ADMIN' ? "bg-red-50 text-red-600 border-red-100" : 
+                      user.role === 'STAFF' ? "bg-amber-50 text-amber-600 border-amber-100" :
+                      "bg-primary/5 text-primary border-primary/10"
+                    )}>
                       {user.role}
                     </span>
+                    {user.parent && (
+                      <div className="text-[10px] text-gray-400 font-bold mt-1 uppercase truncate max-w-[100px] mx-auto">
+                        via {user.parent.name || user.parent.email}
+                      </div>
+                    )}
                   </td>
                   <td className="p-8 text-center">
                     <button 
@@ -188,6 +227,100 @@ export default function AdminUsers() {
           </table>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-xl rounded-[40px] border border-gray-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <form onSubmit={handleCreateUser}>
+              <div className="p-10 border-b border-gray-50 flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900 tracking-tight">Créer un Compte</h3>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-2">Nouvel utilisateur système</p>
+                </div>
+                <button type="button" onClick={() => setShowCreateModal(false)} className="w-10 h-10 flex items-center justify-center bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition">✕</button>
+              </div>
+              <div className="p-10 space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Nom complet</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Jean Dupont"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm focus:border-primary outline-none transition-all"
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Email</label>
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="jean@example.com"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm focus:border-primary outline-none transition-all"
+                      value={formData.email}
+                      onChange={e => setFormData({...formData, email: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Mot de passe</label>
+                    <input 
+                      type="password" 
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm focus:border-primary outline-none transition-all"
+                      value={formData.password}
+                      onChange={e => setFormData({...formData, password: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Rôle</label>
+                    <select 
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm focus:border-primary outline-none transition-all appearance-none"
+                      value={formData.role}
+                      onChange={e => setFormData({...formData, role: e.target.value})}
+                    >
+                      <option value="ORGANIZER">ORGANISATEUR (Marchand)</option>
+                      <option value="ADMIN">ADMINISTRATEUR (SuperAdmin)</option>
+                      <option value="STAFF">STAFF (Agent Mobile)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {formData.role === 'STAFF' && (
+                  <div className="space-y-2 animate-in slide-in-from-top-4 duration-300">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Organisateur Parent</label>
+                    <select 
+                      required
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-6 text-sm focus:border-primary outline-none transition-all appearance-none"
+                      value={formData.parentId}
+                      onChange={e => setFormData({...formData, parentId: e.target.value})}
+                    >
+                      <option value="">Sélectionner un organisateur...</option>
+                      {users.filter(u => u.role === 'ORGANIZER').map(u => (
+                        <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <Button 
+                  type="submit"
+                  loading={isConfirming}
+                  className="w-full py-5 rounded-[24px] text-xs h-14 mt-4"
+                >
+                  Créer le compte
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Manual Plan Modal */}
       {showPlanModal && (
