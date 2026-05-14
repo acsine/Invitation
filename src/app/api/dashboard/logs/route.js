@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth';
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'ORGANIZER') {
+    if (!session || (session.user.role !== 'ORGANIZER' && session.user.role !== 'ADMIN')) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
@@ -18,21 +18,25 @@ export async function GET(request) {
 
     const staffIds = staff.map(s => s.id);
 
-    // Get logs for the organizer themselves and their staff
+    // Query condition: ADMIN sees everything, ORGANIZER sees self + staff
+    const where = session.user.role === 'ADMIN' 
+      ? {} 
+      : {
+          OR: [
+            { userId: session.user.id },
+            { userId: { in: staffIds } }
+          ]
+        };
+
     const logs = await prisma.activityLog.findMany({
-      where: {
-        OR: [
-          { userId: session.user.id },
-          { userId: { in: staffIds } }
-        ]
-      },
+      where,
       include: {
         user: {
           select: { name: true, email: true, role: true }
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 100 // Last 100 logs
+      take: 100
     });
 
     return NextResponse.json(logs);

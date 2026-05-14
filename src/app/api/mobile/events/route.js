@@ -10,8 +10,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'ID utilisateur requis' }, { status: 400 });
     }
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, parentId: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
+    }
+
+    // Determine the owner ID for events
+    const ownerId = user.role === 'STAFF' ? user.parentId : userId;
+
     const events = await prisma.event.findMany({
-      where: { userId },
+      where: { userId: ownerId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {

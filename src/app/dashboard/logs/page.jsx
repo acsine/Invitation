@@ -20,7 +20,7 @@ export default function ActivityLogs() {
     try {
       const res = await fetch('/api/dashboard/logs');
       const data = await res.json();
-      setLogs(data);
+      setLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
