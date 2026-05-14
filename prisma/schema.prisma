@@ -18,6 +18,21 @@ model User {
   events        Event[]
   subscription  Subscription?
   withdrawalRequests WithdrawalRequest[]
+  supportTickets     SupportTicket[]
+}
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  userId      String
+  subject     String
+  message     String
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  adminReply  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("support_tickets")
 }
 
 model Plan {
@@ -53,6 +68,7 @@ model Event {
   paymentNumber     String?
   shareCode         String   @unique
   customFields      String   @default("[]") // Config JSON: [{name, label, type, required, options}]
+  uniquenessField   String   @default("phone") // 'phone' or custom field name
   attendanceDays    Int      @default(1)    // Number of check-in boxes for the report
   startDate         DateTime?
   endDate           DateTime?
@@ -68,6 +84,7 @@ model Guest {
   id                String   @id @default(uuid())
   eventId           String
   name              String
+  phone             String?
   photoUrl          String?
   generatedImageUrl String?
   status            String   @default("PENDING") // PENDING, PAID, CANCELLED
@@ -77,6 +94,8 @@ model Guest {
   submittedAt       DateTime @default(now())
   event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   payment           Payment?
+
+  @@unique([eventId, phone])
 }
 
 model BadgeTemplate {

@@ -306,15 +306,32 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
 };
 
 
-export default function PosterEditor({ initialData = {}, onSave, loading = false, customFields = [], saveText = null }) {
-  const [bgImageSrc, setBgImageSrc] = useState(initialData.backgroundImageUrl || null);
+export default function PosterEditor({ initialData = {}, onSave, onChange, loading = false, customFields = [], saveText = null }) {
+  const safeData = initialData || {};
+  const [bgImageSrc, setBgImageSrc] = useState(safeData.backgroundImageUrl || null);
   const [bgImage] = useImage(bgImageSrc);
   const [elements, setElements] = useState(() => {
-    const rawZones = initialData.zones ? (typeof initialData.zones === 'string' ? JSON.parse(initialData.zones) : initialData.zones) : [];
+    const rawZones = safeData.zones ? (typeof safeData.zones === 'string' ? JSON.parse(safeData.zones) : safeData.zones) : [];
     return Array.isArray(rawZones) ? rawZones : (rawZones.elements || []);
   });
+
+  // Live update
+  useEffect(() => {
+    if (onChange) {
+        onChange({ 
+            backgroundImageUrl: bgImageSrc, 
+            zones: elements, 
+            designWidth: 800, 
+            designHeight: bgImage ? (800 * bgImage.height / bgImage.width) : 1120 
+        });
+    }
+  }, [elements, bgImageSrc, bgImage]);
   const [selectedId, setSelectedId] = useState(null);
-  const [stageSize, setStageSize] = useState({ width: 600, height: 800 });
+  const [stageSize, setStageSize] = useState({ width: 800, height: 1120 });
+  const [displayScale, setDisplayScale] = useState(1);
+  
+  const VIRTUAL_WIDTH = 800;
+  const VIRTUAL_HEIGHT = 1120;
 
   const [canvasBg, setCanvasBg] = useState('#ffffff');
   const [gradientEnabled, setGradientEnabled] = useState(false);
@@ -324,17 +341,25 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
   const stageRef = useRef();
 
   useEffect(() => {
-    const updateSize = () => {
+    const updateScale = () => {
       if (containerRef.current) {
-        const { offsetWidth } = containerRef.current;
-        const width = Math.min(offsetWidth - 40, 800);
-        const height = bgImage ? (width * bgImage.height) / bgImage.width : (width * 1.4);
-        setStageSize({ width, height });
+        const { offsetWidth, offsetHeight } = containerRef.current;
+        const availableWidth = offsetWidth - 64; // padding
+        const availableHeight = offsetHeight - 64;
+        
+        const scale = Math.min(availableWidth / VIRTUAL_WIDTH, availableHeight / (bgImage ? (VIRTUAL_WIDTH * bgImage.height / bgImage.width) : VIRTUAL_HEIGHT));
+        setDisplayScale(scale);
+        
+        if (bgImage) {
+            setStageSize({ width: VIRTUAL_WIDTH, height: VIRTUAL_WIDTH * bgImage.height / bgImage.width });
+        } else {
+            setStageSize({ width: VIRTUAL_WIDTH, height: VIRTUAL_HEIGHT });
+        }
       }
     };
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
   }, [bgImage]);
 
   const addElement = (type, extra = {}) => {
@@ -447,7 +472,14 @@ export default function PosterEditor({ initialData = {}, onSave, loading = false
       <div className="flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#0E0E0F]">
         {/* Canvas */}
         <div ref={containerRef} className="flex-1 min-w-0 relative overflow-auto flex items-center justify-center p-8">
-          <div className="relative shadow-2xl">
+          <div 
+            className="relative shadow-2xl origin-center transition-transform duration-300"
+            style={{ 
+                transform: `scale(${displayScale})`,
+                width: stageSize.width,
+                height: stageSize.height
+            }}
+          >
             <Stage
               width={stageSize.width}
               height={stageSize.height}

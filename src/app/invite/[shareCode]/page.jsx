@@ -8,15 +8,16 @@ import Button from '@/components/ui/Button';
 import { toast } from 'react-hot-toast';
 import { Stage, Layer, Rect, Circle, Text, Image as KonvaImage, Group } from 'react-konva';
 import useImage from 'use-image';
-import { FiUpload, FiDownload, FiUser, FiCamera, FiShare2, FiZap } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiUser, FiCamera, FiShare2, FiZap, FiAlertTriangle } from 'react-icons/fi';
 import { FaWhatsapp, FaFacebook, FaShareAlt } from 'react-icons/fa';
 import QRCode from 'qrcode';
+import Modal from '@/components/Modal';
 
 const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onPhotoDrag, stageRef, stageSize, qrCodeData }) => {
   const [bgImg] = useImage(event.backgroundImageUrl || '', 'anonymous');
   const [userImg] = useImage(guestPhoto || '', 'anonymous');
   const [qrImg] = useImage(qrCodeData || '', 'anonymous');
-  
+
   const rawZones = JSON.parse(event.zones || '[]');
   const elements = Array.isArray(rawZones) ? rawZones : (rawZones.elements || []);
   const designWidth = rawZones.designWidth || stageSize.width;
@@ -95,12 +96,12 @@ const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onP
               >
                 <Rect width={zone.width} height={zone.height} fill="#f3f4f6" />
                 {userImg && (
-                  <KonvaImage 
-                    image={userImg} 
+                  <KonvaImage
+                    image={userImg}
                     x={photoPos.x * zone.width}
                     y={photoPos.y * zone.height}
-                    width={zone.width * photoZoom} 
-                    height={zone.height * photoZoom} 
+                    width={zone.width * photoZoom}
+                    height={zone.height * photoZoom}
                     draggable
                     onMouseEnter={(e) => {
                       const container = e.target.getStage().container();
@@ -148,7 +149,7 @@ const PosterRenderer = ({ event, guestName, guestPhoto, photoPos, photoZoom, onP
               </Group>
             );
           }
-          return null; 
+          return null;
         })}
       </Layer>
     </Stage>
@@ -168,10 +169,10 @@ export default function InvitePage({ params }) {
         </div>
         <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-4 tracking-tighter uppercase">Démo non disponible</h1>
         <p className="text-gray-500 font-medium max-w-md leading-relaxed">
-          Cette fonctionnalité de démonstration est en cours de maintenance. <br/> 
+          Cette fonctionnalité de démonstration est en cours de maintenance. <br />
           Revenez très bientôt pour découvrir la puissance de notre système d'invitation !
         </p>
-        <Button 
+        <Button
           onClick={() => {
             setReturnLoading(true);
             window.location.href = '/';
@@ -187,6 +188,7 @@ export default function InvitePage({ params }) {
 
   const [event, setEvent] = useState(null);
   const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
   const [guestPhoto, setGuestPhoto] = useState(null);
   const [additionalData, setAdditionalData] = useState({});
   const [photoPos, setPhotoPos] = useState({ x: 0, y: 0 });
@@ -195,6 +197,9 @@ export default function InvitePage({ params }) {
   const [sharingPlatform, setSharingPlatform] = useState(null); // null, 'whatsapp', 'facebook', 'all'
   const [stageSize, setStageSize] = useState({ width: 400, height: 600 });
   const [qrCodeData, setQrCodeData] = useState(null);
+  const [duplicateGuest, setDuplicateGuest] = useState(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
   const containerRef = useRef();
   const stageRef = useRef();
 
@@ -219,13 +224,10 @@ export default function InvitePage({ params }) {
     const updateSize = () => {
       if (containerRef.current && event) {
         const width = Math.min(containerRef.current.offsetWidth, 500);
-        
-        // Use saved proportions if available, otherwise default to 1.4
         const rawZones = JSON.parse(event.zones || '{}');
-        const ratio = (rawZones.designWidth && rawZones.designHeight) 
-          ? rawZones.designHeight / rawZones.designWidth 
+        const ratio = (rawZones.designWidth && rawZones.designHeight)
+          ? rawZones.designHeight / rawZones.designWidth
           : 1.4;
-          
         setStageSize({ width, height: width * ratio });
       }
     };
@@ -234,6 +236,22 @@ export default function InvitePage({ params }) {
     return () => window.removeEventListener('resize', updateSize);
   }, [event]);
 
+  const checkDuplicate = async (value) => {
+    if (!value || value.length < 3) return;
+    setIsChecking(true);
+    try {
+      const res = await fetch(`/api/invite/${shareCode}/check?value=${encodeURIComponent(value)}`);
+      const data = await res.json();
+      if (data.exists) {
+        setDuplicateGuest(data.guest);
+        setShowDuplicateModal(true);
+      }
+    } catch (err) {
+      console.error("Check duplicate error:", err);
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
@@ -244,24 +262,17 @@ export default function InvitePage({ params }) {
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
-          // Use original dimensions but keep square for zone compatibility
           const size = Math.min(img.width, img.height);
           canvas.width = size;
           canvas.height = size;
-          
           const offsetX = (img.width - size) / 2;
           const offsetY = (img.height - size) / 2;
-          
-          // Advanced High-End Auto-Enhancement
-          // High contrast and brightness to make the face luminous and clear
           ctx.filter = 'contrast(1.4) brightness(1.1) saturate(1.4)';
           ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, size, size);
-          
           setGuestPhoto(canvas.toDataURL('image/jpeg', 0.9));
           setPhotoPos({ x: 0, y: 0 });
           setPhotoZoom(1);
-          toast.success('Photo ajoutée ! Utilisez le curseur pour zoomer et la souris pour déplacer.');
+          toast.success('Photo ajoutée !');
         };
         img.src = event.target.result;
       };
@@ -274,8 +285,10 @@ export default function InvitePage({ params }) {
       toast.error('Veuillez entrer votre nom OU ajouter une photo');
       return false;
     }
-    
-    // Validate custom fields
+    if (!guestPhone) {
+      toast.error('Le numéro de téléphone est obligatoire');
+      return false;
+    }
     const config = JSON.parse(event.customFields || '[]');
     for (const field of config) {
       if (field.required && !additionalData[field.name]) {
@@ -290,23 +303,20 @@ export default function InvitePage({ params }) {
     e.preventDefault();
     if (!validateForm()) return;
     setSharingPlatform('all');
-    
+    setDuplicateGuest(null);
+
     try {
       // 1. Generate unique guest ID if not exists
       const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
-      
+
       // 2. Regenerate QR code with real ID
       const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1 });
       setQrCodeData(realQrUrl);
-      
+
       // Wait a bit for the canvas to update with the new QR
       await new Promise(r => setTimeout(r, 100));
 
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
-      const link = document.createElement('a');
-      link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
-      link.href = dataUrl;
-      link.click();
 
       const res = await fetch(`/api/guests`, {
         method: 'POST',
@@ -315,82 +325,103 @@ export default function InvitePage({ params }) {
           id: tempId,
           eventId: event.id,
           name: guestName,
+          phone: guestPhone,
           photoUrl: guestPhoto,
           additionalData: JSON.stringify(additionalData),
-          saveToCloud: false 
+          saveToCloud: false
         }),
       });
 
-      if (res.ok) toast.success('Invitation téléchargée avec succès !');
-      else toast.error('Erreur lors de l\'inscription');
+      const resData = await res.json();
+
+      if (res.ok) {
+        const link = document.createElement('a');
+        link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
+        link.href = dataUrl;
+        link.click();
+        toast.success('Invitation téléchargée avec succès !');
+      } else if (res.status === 409 && resData.error === 'DOUBLON') {
+        setDuplicateGuest(resData.guest);
+        toast.error(resData.message);
+      } else {
+        toast.error(resData.error || 'Erreur lors de l\'inscription');
+      }
     } catch (error) {
+      console.error(error);
       toast.error('Erreur lors de la génération');
     }
     setSharingPlatform(null);
   };
-  
+
   const handleShare = async (platform) => {
     if (!validateForm()) return;
-    
     setSharingPlatform(platform);
+    setDuplicateGuest(null);
+
     try {
       // 1. Generate unique guest ID
       const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
-      
+
       // 2. Regenerate QR code with real ID
       const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1 });
       setQrCodeData(realQrUrl);
-      
+
       // Wait a bit for the canvas to update with the new QR
       await new Promise(r => setTimeout(r, 100));
 
       // 3. Generate the invitation image locally
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `invitation_${event.name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
 
-      // 4. Prepare sharing text
-      const shareUrl = window.location.href;
-      const shareText = `Salut ! 👋 Je viens de créer mon invitation personnalisée pour l'événement "${event.name}". 😍\n\nTu peux aussi générer la tienne ici :\n👉 ${shareUrl}`;
-
-      // 5. Native File Share (This attaches the REAL IMAGE)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: `Mon invitation pour ${event.name}`,
-            text: shareText
-          });
-          toast.success('Prêt à partager !');
-        } catch (err) {
-          if (err.name !== 'AbortError') throw err;
-        }
-      } else {
-        // Fallback: If native share fails or is not supported (Desktop)
-        // We download the image and copy the text
-        const link = document.createElement('a');
-        link.download = `invitation_${event.name}.png`;
-        link.href = dataUrl;
-        link.click();
-        
-        navigator.clipboard.writeText(shareText);
-        toast.success("Image téléchargée ! Collez le message pour partager.");
-      }
-
-      // 6. Background Sync (Save to cloud for the organizer)
-      fetch(`/api/guests`, {
+      // 4. Background Sync (Save to cloud for the organizer)
+      const res = await fetch(`/api/guests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: tempId,
           eventId: event.id,
           name: guestName,
+          phone: guestPhone,
           photoUrl: guestPhoto,
           additionalData: JSON.stringify(additionalData),
           generatedImageUrl: dataUrl,
-          saveToCloud: true 
+          saveToCloud: true
         }),
-      }).catch(err => console.error("Sync error:", err));
+      });
+
+      const resData = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409 && resData.error === 'DOUBLON') {
+          setDuplicateGuest(resData.guest);
+          toast.error(resData.message);
+          setSharingPlatform(null);
+          return;
+        }
+        throw new Error(resData.error);
+      }
+
+      // 5. Prepare sharing text
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `invitation_${event.name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+      const shareUrl = window.location.href;
+      const shareText = `Salut ! 👋 Je viens de créer mon invitation personnalisée pour l'événement "${event.name}". 😍\n\nTu peux aussi générer la tienne ici :\n👉 ${shareUrl}`;
+
+      // 6. Native File Share
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Mon invitation pour ${event.name}`,
+          text: shareText
+        });
+        toast.success('Prêt à partager !');
+      } else {
+        const link = document.createElement('a');
+        link.download = `invitation_${event.name}.png`;
+        link.href = dataUrl;
+        link.click();
+        navigator.clipboard.writeText(shareText);
+        toast.success("Image téléchargée ! Collez le message pour partager.");
+      }
 
     } catch (error) {
       console.error('Share error:', error);
@@ -404,20 +435,82 @@ export default function InvitePage({ params }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark pb-12">
+      {/* Duplicate Modal */}
+      <Modal
+        visible={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        outerClassName="max-w-md"
+      >
+        <div className="text-center">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/10 mb-6">
+            <FiAlertTriangle className="h-10 w-10 text-amber-600" />
+          </div>
+          <h3 className="text-2xl font-bold text-dark dark:text-white mb-3">
+            Déjà inscrit !
+          </h3>
+          <p className="text-body-color mb-8 leading-relaxed">
+            Un enregistrement au nom de <strong className="text-dark dark:text-white">{duplicateGuest?.name}</strong> existe déjà avec ces informations.
+          </p>
+
+          <div className="flex flex-col gap-3">
+            {duplicateGuest?.generatedImageUrl ? (
+              <a
+                href={duplicateGuest.generatedImageUrl}
+                target="_blank"
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition shadow-lg shadow-amber-600/20"
+              >
+                <FiDownload />
+                Télécharger mon invitation
+              </a>
+            ) : (
+              <div className="p-4 bg-gray-50 dark:bg-dark-3 rounded-xl text-xs text-body-color italic">
+                L'invitation précédente n'est pas disponible en ligne.
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowDuplicateModal(false)}
+              className="w-full py-4 px-8 text-center text-sm font-bold text-body-color hover:text-dark dark:hover:text-white transition"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Verification Overlay */}
+      {isChecking && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/60 dark:bg-dark/60 backdrop-blur-[2px] animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-dark-2 p-8 rounded-[32px] shadow-2xl border border-stroke dark:border-white/10 flex flex-col items-center max-w-xs w-full mx-4 transform animate-in zoom-in duration-300">
+            <div className="relative w-16 h-16 mb-6">
+              <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <FiZap className="text-primary animate-pulse" size={20} />
+              </div>
+            </div>
+            <p className="text-dark dark:text-white font-bold text-lg mb-2">Vérification...</p>
+            <p className="text-body-color text-xs text-center leading-relaxed">
+              Nous vérifions si vous êtes déjà enregistré pour cet événement.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-6xl px-4 pt-12">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 items-start">
           {/* Preview Section */}
           <div ref={containerRef} className="flex flex-col items-center sticky top-12 z-50">
             <div className="relative group">
-              <PosterRenderer 
-                event={event} 
-                guestName={guestName} 
-                guestPhoto={guestPhoto} 
+              <PosterRenderer
+                event={event}
+                guestName={guestName}
+                guestPhoto={guestPhoto}
                 photoPos={photoPos}
                 photoZoom={photoZoom}
                 onPhotoDrag={setPhotoPos}
-                stageRef={stageRef} 
-                stageSize={stageSize} 
+                stageRef={stageRef}
+                stageSize={stageSize}
                 qrCodeData={qrCodeData}
               />
               {guestPhoto && (
@@ -439,13 +532,43 @@ export default function InvitePage({ params }) {
               <h1 className="text-3xl font-bold text-dark mb-2">{event.name}</h1>
               <p className="text-body-color">Complétez vos informations pour générer votre invitation personnalisée.</p>
             </div>
-            
+
+            {duplicateGuest && (
+              <div className="mb-8 p-6 bg-amber-50 rounded-2xl border border-amber-200 animate-in fade-in zoom-in duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                    <FiAlertTriangle size={24} />
+                  </div>
+                  <div className="flex-grow">
+                    <h4 className="font-bold text-amber-900 mb-1">Vous êtes déjà inscrit !</h4>
+                    <p className="text-sm text-amber-700 mb-4">
+                      Un enregistrement au nom de <strong className="text-amber-900">{duplicateGuest.name}</strong> a été trouvé avec ces informations.
+                    </p>
+                    {duplicateGuest.generatedImageUrl ? (
+                      <a
+                        href={duplicateGuest.generatedImageUrl}
+                        target="_blank"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition shadow-lg shadow-amber-600/20"
+                      >
+                        <FiDownload />
+                        Télécharger mon invitation
+                      </a>
+                    ) : (
+                      <p className="text-xs text-amber-600 italic font-medium">
+                        (L'invitation précédente n'est pas disponible en ligne, veuillez contacter l'organisateur)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="mb-2 block text-sm font-bold text-dark">Votre nom complet</label>
-                <input 
-                  type="text" 
-                  value={guestName} 
+                <input
+                  type="text"
+                  value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   placeholder="Ex: Jean Dupont"
                   className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
@@ -454,38 +577,75 @@ export default function InvitePage({ params }) {
                 <p className="mt-2 text-[10px] text-gray-400 italic">Optionnel si vous ajoutez une photo</p>
               </div>
 
+              <div>
+                <label className="mb-2 block text-sm font-bold text-dark">Numéro de téléphone <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                    onBlur={(e) => event?.uniquenessField === 'phone' && checkDuplicate(e.target.value)}
+                    placeholder="Ex: +237 6XX XXX XXX"
+                    required
+                    className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
+                    style={{ color: 'black' }}
+                  />
+                  {isChecking && event?.uniquenessField === 'phone' && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Dynamic Custom Fields */}
               {JSON.parse(event.customFields || '[]').map((field) => (
                 <div key={field.id}>
                   <label className="mb-2 block text-sm font-bold text-dark">
                     {field.label} {field.required && <span className="text-red-500">*</span>}
                   </label>
-                  
+
                   {field.type === 'text' && (
-                    <input 
-                      type="text" 
-                      value={additionalData[field.name] || ''} 
-                      onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
-                      placeholder={`Entrez votre ${field.label.toLowerCase()}`}
-                      className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
-                      style={{ color: 'black' }}
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={additionalData[field.name] || ''}
+                        onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
+                        onBlur={(e) => event?.uniquenessField === field.name && checkDuplicate(e.target.value)}
+                        placeholder={`Entrez votre ${field.label.toLowerCase()}`}
+                        className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
+                        style={{ color: 'black' }}
+                      />
+                      {isChecking && event?.uniquenessField === field.name && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {field.type === 'number' && (
-                    <input 
-                      type="number" 
-                      value={additionalData[field.name] || ''} 
-                      onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
-                      placeholder={`Entrez votre ${field.label.toLowerCase()}`}
-                      className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
-                      style={{ color: 'black' }}
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={additionalData[field.name] || ''}
+                        onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
+                        onBlur={(e) => event?.uniquenessField === field.name && checkDuplicate(e.target.value)}
+                        placeholder={`Entrez votre ${field.label.toLowerCase()}`}
+                        className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
+                        style={{ color: 'black' }}
+                      />
+                      {isChecking && event?.uniquenessField === field.name && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {field.type === 'select' && (
-                    <select 
-                      value={additionalData[field.name] || ''} 
+                    <select
+                      value={additionalData[field.name] || ''}
                       onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.value })}
                       className="w-full rounded-xl border border-stroke bg-white py-3 px-5 text-gray-900 font-medium outline-none focus:border-primary transition !text-black shadow-sm"
                       style={{ color: 'black' }}
@@ -500,16 +660,16 @@ export default function InvitePage({ params }) {
                   {field.type === 'checkbox' && (
                     <label className="flex items-center gap-3 cursor-pointer group">
                       <div className={cn(
-                        "w-6 h-6 rounded border-2 flex items-center justify-center transition-all", 
+                        "w-6 h-6 rounded border-2 flex items-center justify-center transition-all",
                         additionalData[field.name] ? "bg-primary border-primary" : "border-stroke group-hover:border-primary"
                       )}>
                         {additionalData[field.name] && <Icon name="check" size="14" fill="#FFF" />}
                       </div>
-                      <input 
-                        type="checkbox" 
-                        checked={additionalData[field.name] || false} 
-                        onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.checked })} 
-                        className="hidden" 
+                      <input
+                        type="checkbox"
+                        checked={additionalData[field.name] || false}
+                        onChange={(e) => setAdditionalData({ ...additionalData, [field.name]: e.target.checked })}
+                        className="hidden"
                       />
                       <span className="font-medium text-sm text-dark">{field.label}</span>
                     </label>
@@ -557,12 +717,12 @@ export default function InvitePage({ params }) {
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Zoom du portrait</label>
                       <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">{Math.round(photoZoom * 100)}%</span>
                     </div>
-                    <input 
-                      type="range" 
-                      min="0.5" 
-                      max="3" 
-                      step="0.05" 
-                      value={photoZoom} 
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="3"
+                      step="0.05"
+                      value={photoZoom}
                       onChange={(e) => setPhotoZoom(parseFloat(e.target.value))}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary mb-2"
                     />
@@ -576,10 +736,10 @@ export default function InvitePage({ params }) {
                   <div className="text-xl font-bold text-primary mb-2">Prix: {event.price} FCFA</div>
                   <p className="text-sm text-body-color mb-4 italic">Veuillez effectuer le paiement au numéro: <strong className="text-dark">{event.paymentNumber}</strong></p>
                   <label className="mb-2 block text-xs font-bold text-gray-500 uppercase">Référence de la transaction</label>
-                  <input 
+                  <input
                     type="text"
-                    placeholder="Entrez le code reçu" 
-                    required 
+                    placeholder="Entrez le code reçu"
+                    required
                     className="w-full rounded-lg border border-stroke bg-white py-2 px-4 text-sm text-dark outline-none focus:border-primary"
                   />
                 </div>
@@ -588,7 +748,7 @@ export default function InvitePage({ params }) {
               <div className="pt-2">
                 <p className="text-center text-sm font-bold text-gray-500 mb-6 uppercase tracking-wider italic">Partagez pour confirmer votre présence</p>
                 <div className="grid grid-cols-2 gap-4">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => handleShare('whatsapp')}
                     disabled={sharingPlatform !== null}
@@ -596,7 +756,7 @@ export default function InvitePage({ params }) {
                   >
                     {sharingPlatform === 'whatsapp' ? <Loader className="!h-6 !w-6 !text-white" /> : <><FaWhatsapp size={24} /> WhatsApp</>}
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => handleShare('facebook')}
                     disabled={sharingPlatform !== null}
@@ -605,7 +765,7 @@ export default function InvitePage({ params }) {
                     {sharingPlatform === 'facebook' ? <Loader className="!h-6 !w-6 !text-white" /> : <><FaFacebook size={24} /> Facebook</>}
                   </button>
                 </div>
-                <button 
+                <button
                   type="button"
                   onClick={() => handleShare('all')}
                   disabled={sharingPlatform !== null}

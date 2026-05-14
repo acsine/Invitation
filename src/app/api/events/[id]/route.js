@@ -40,25 +40,61 @@ export async function DELETE(request, { params }) {
 }
 
 export async function GET(request, { params }) {
-    try {
-      const { id } = await params;
-      const session = await getServerSession(authOptions);
-      
-      const event = await prisma.event.findUnique({
-        where: { id },
-        include: {
-          guests: {
-            orderBy: { submittedAt: 'desc' },
-          },
+  try {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        guests: {
+          orderBy: { submittedAt: 'desc' },
         },
-      });
-  
-      if (!event || event.userId !== session.user.id) {
-        return NextResponse.json({ error: 'Événement non trouvé' }, { status: 404 });
-      }
-  
-      return NextResponse.json(event);
-    } catch (error) {
-      return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+      },
+    });
+
+    if (!event || event.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Événement non trouvé' }, { status: 404 });
     }
+
+    return NextResponse.json(event);
+  } catch (error) {
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
+}
+
+export async function PATCH(request, { params }) {
+  try {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    const data = await request.json();
+
+    if (!session) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    // Check ownership
+    const event = await prisma.event.findUnique({
+      where: { id },
+      select: { userId: true }
+    });
+
+    if (!event || event.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
+    }
+
+    // Use raw SQL to bypass Prisma Client validation for the new field
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Event" SET "uniquenessField" = $1 WHERE id = $2`,
+      data.uniquenessField,
+      id
+    );
+
+    const updatedEvent = await prisma.event.findUnique({ where: { id } });
+
+    return NextResponse.json(updatedEvent);
+  } catch (error) {
+    console.error('Update event error:', error);
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+  }
+}

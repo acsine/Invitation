@@ -8,8 +8,7 @@ import autoTable from 'jspdf-autotable';
 import AppLink from '@/components/AppLink';
 import { FiPrinter } from 'react-icons/fi';
 
-const GuestManagerTable = ({ event, guests: initialGuests }) => {
-  const [guests] = useState(initialGuests);
+const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingXML, setIsExportingXML] = useState(false);
   
@@ -179,6 +178,11 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h3 className="text-xl font-bold text-dark dark:text-white flex items-center gap-2">
            <FiUsers className="text-primary" /> Liste des Invités ({guests.length})
+           {allGuestsCount > guests.length && (
+             <span className="px-2 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-bold">
+               {allGuestsCount - guests.length} doublons masqués
+             </span>
+           )}
         </h3>
          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-dark-3 rounded-lg border border-stroke dark:border-white/10">
@@ -252,6 +256,7 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
             <thead>
               <tr className="border-b border-stroke dark:border-white/10 bg-gray-50/50 dark:bg-dark-3/50">
                 <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider">Invité</th>
+                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider">Téléphone</th>
                 {customFieldsConfig.map(field => (
                   <th key={field.id} className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider">
                     {field.label}
@@ -279,6 +284,9 @@ const GuestManagerTable = ({ event, guests: initialGuests }) => {
                         </div>
                         <span className="font-bold text-dark dark:text-white">{guest.name}</span>
                       </div>
+                    </td>
+                    <td className="p-6">
+                       <span className="text-sm font-medium text-body-color">{guest.phone || '-'}</span>
                     </td>
                     
                     {customFieldsConfig.map(field => (

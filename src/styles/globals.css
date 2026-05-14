@@ -16,14 +16,15 @@
 }
 
 @layer base {
+
   html,
   body {
     padding: 0;
     margin: 0;
     font-family: var(--font-poppins);
     background: radial-gradient(circle at 0% 0%, rgba(68, 55, 255, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 100% 100%, rgba(239, 70, 111, 0.03) 0%, transparent 50%),
-                #FCFCFD;
+      radial-gradient(circle at 100% 100%, rgba(239, 70, 111, 0.03) 0%, transparent 50%),
+      #FCFCFD;
     @apply antialiased text-[#23262F];
   }
 
@@ -56,8 +57,8 @@
 
   .dark-mode {
     background: radial-gradient(circle at 0% 0%, rgba(68, 55, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 100% 100%, rgba(239, 70, 111, 0.1) 0%, transparent 50%),
-                #141416;
+      radial-gradient(circle at 100% 100%, rgba(239, 70, 111, 0.1) 0%, transparent 50%),
+      #141416;
     @apply text-[#FCFCFD];
 
     ::-webkit-scrollbar-thumb {
@@ -83,6 +84,80 @@
 
 
 
-.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #E6E8EC; border-radius: 10px; } .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #353945; }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
 
-@keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0px); } } .animate-float { animation: float 6s ease-in-out infinite; } @keyframes pulse-soft { 0% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } 100% { opacity: 0.4; transform: scale(1); } } .animate-pulse-soft { animation: pulse-soft 8s ease-in-out infinite; } .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.3); }
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E6E8EC;
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #353945;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 8s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}

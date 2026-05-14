@@ -5,20 +5,12 @@ export async function GET(request, { params }) {
   try {
     const { shareCode } = await params;
 
-    const event = await prisma.event.findUnique({
-      where: { shareCode },
-      select: {
-        id: true,
-        name: true,
-        backgroundImageUrl: true,
-        zones: true,
-        isPaid: true,
-        price: true,
-        paymentNumber: true,
-        customFields: true,
-        attendanceDays: true,
-      },
-    });
+    // Use raw SQL to bypass Prisma Client validation for the new field
+    const events = await prisma.$queryRawUnsafe(
+      `SELECT id, name, "backgroundImageUrl", zones, "isPaid", price, "paymentNumber", "customFields", "attendanceDays", "uniquenessField" FROM "Event" WHERE "shareCode" = $1`,
+      shareCode
+    );
+    const event = events[0];
 
     if (!event) {
       return NextResponse.json({ error: 'Événement non trouvé' }, { status: 404 });

@@ -7,7 +7,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import AppLink from '@/components/AppLink';
 import cn from 'classnames';
-import { FiPlus, FiUsers, FiCalendar, FiExternalLink, FiSettings, FiImage } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiCalendar, FiExternalLink, FiSettings, FiImage, FiFileText } from 'react-icons/fi';
+
+import GlobalBadgeButton from '@/components/dashboard/GlobalBadgeButton';
 
 export default async function EventsPage() {
   const session = await getServerSession(authOptions);
@@ -29,13 +31,16 @@ export default async function EventsPage() {
            <h2 className="text-4xl font-black text-gray-900 tracking-tight mb-2">Mes Événements</h2>
            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em]">Gérez vos cérémonies et invités</p>
         </div>
-        <AppLink 
-          className="inline-flex items-center justify-center rounded-2xl bg-primary py-4 px-8 text-center text-sm font-black text-white uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-2" 
-          href="/dashboard/events/new"
-        >
-          <FiPlus size={20} />
-          <span>Nouvel événement</span>
-        </AppLink>
+        <div className="flex items-center gap-4">
+          <GlobalBadgeButton />
+          <AppLink 
+            className="inline-flex items-center justify-center rounded-2xl bg-primary py-4 px-8 text-center text-sm font-black text-white uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-2" 
+            href="/dashboard/events/new"
+          >
+            <FiPlus size={20} />
+            <span>Nouvel événement</span>
+          </AppLink>
+        </div>
       </div>
       
       {events.length === 0 ? (
@@ -94,20 +99,20 @@ export default async function EventsPage() {
                 <div className="mt-auto grid grid-cols-2 gap-3">
                   <ManageEventButton 
                     href={`/dashboard/events/${event.id}`}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-xs font-black text-white uppercase tracking-widest hover:bg-primary transition-all shadow-lg"
+                    className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-xs font-black text-white uppercase tracking-widest hover:bg-primary transition-all shadow-lg"
                   />
                   <AppLink 
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-white border border-gray-100 py-4 text-xs font-black text-gray-900 uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-sm" 
+                    className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-white border border-gray-100 py-4 text-xs font-black text-gray-900 uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-sm" 
                     href={`/invite/${event.shareCode}`} 
                     target="_blank"
                   >
                     <FiExternalLink size={14} />
-                    Lien
+                    Lien d'invitation
                   </AppLink>
                   <DeleteEventButton 
                     eventId={event.id} 
                     eventName={event.name} 
-                    className="col-span-2 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-red-500 py-4 text-[10px] font-black text-white uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 border-none"
+                    className="col-span-2 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-4 text-[10px] font-black text-red-500 uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border-none"
                   />
                 </div>
               </div>

@@ -8,7 +8,7 @@ import Image from 'next/image';
 import DeleteEventButton from '@/components/dashboard/DeleteEventButton';
 import AppLink from '@/components/AppLink';
 import { FiUsers, FiCheckCircle, FiClock, FiDownload, FiPrinter, FiPlus } from 'react-icons/fi';
-import GuestManagerTable from '@/components/dashboard/GuestManagerTable';
+import EventViewSwitcher from '@/components/dashboard/EventViewSwitcher';
 
 export default async function EventDetailsPage({ params }) {
   const { id } = await params;
@@ -67,8 +67,8 @@ export default async function EventDetailsPage({ params }) {
         ))}
       </div>
 
-      {/* Guests Section */}
-      <GuestManagerTable event={event} guests={event.guests} />
+      {/* Content Switcher */}
+      <EventViewSwitcher event={event} guests={event.guests} />
     </div>
   );
 }
