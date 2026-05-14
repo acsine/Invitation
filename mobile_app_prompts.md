@@ -70,4 +70,4 @@ Ce document contient les prompts structurés pour implémenter l'application mob
 
 ## Instructions Supplémentaires pour le Backend
 Assurez-vous que les variables d'environnement suivantes sont configurées pour le mobile :
-- `EXPO_PUBLIC_API_URL` : URL de votre backend Next.js (ex: `https://votre-domaine.com`).
+- `EXPO_PUBLIC_API_URL` : URL de votre backend Next.js (ex: `https://invitation-gamma-azure.vercel.app`).
