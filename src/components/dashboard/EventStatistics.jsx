@@ -12,9 +12,23 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 
 export default function EventStatistics({ event, guests }) {
   const [selectedField, setSelectedField] = useState('status');
+  const [selectedSession, setSelectedSession] = useState('all'); // 'all' or 'd1s1', etc.
   const [chartType, setChartType] = useState('bar'); // bar, pie, area, line
   const [valueGroups, setValueGroups] = useState({}); // { [field]: { [val]: group } }
   const [showGroupsManager, setShowGroupsManager] = useState(false);
+
+  // Prepare available sessions for filtering
+  const availableSessions = useMemo(() => {
+    const days = event.attendanceDays || 1;
+    const sessions = event.sessionsPerDay || 1;
+    const list = [{ id: 'all', label: 'Toutes les sessions' }];
+    for (let d = 1; d <= days; d++) {
+      for (let s = 1; s <= sessions; s++) {
+        list.push({ id: `d${d}s${s}`, label: `Jour ${d} - Session ${s}` });
+      }
+    }
+    return list;
+  }, [event.attendanceDays, event.sessionsPerDay]);
 
   // Parse custom fields configuration
   const customFields = useMemo(() => {
@@ -105,15 +119,23 @@ export default function EventStatistics({ event, guests }) {
     return Array.from(countsMap.values()).map(item => ({ name: item.label, value: item.count }));
   }, [guests, selectedField, valueGroups]);
 
-  // Attendance stats
+  // Attendance stats with session filtering
   const attendanceStats = useMemo(() => {
     let presentCount = 0;
     guests.forEach(guest => {
       try {
         const att = JSON.parse(guest.attendance || '{}');
-        // If any session has true, mark as present
-        if (Object.values(att).some(v => v === true)) {
-          presentCount++;
+        
+        if (selectedSession === 'all') {
+          // If any session has true, mark as present
+          if (Object.values(att).some(v => v === true)) {
+            presentCount++;
+          }
+        } else {
+          // Check specific session
+          if (att[selectedSession] === true) {
+            presentCount++;
+          }
         }
       } catch (e) {}
     });
@@ -122,7 +144,7 @@ export default function EventStatistics({ event, guests }) {
       { name: 'Présents', value: presentCount },
       { name: 'Absents', value: guests.length - presentCount }
     ];
-  }, [guests]);
+  }, [guests, selectedSession]);
 
   // Custom Tooltip for professional look
   const CustomTooltip = ({ active, payload, label }) => {
@@ -375,10 +397,22 @@ export default function EventStatistics({ event, guests }) {
         </div>
 
         {/* Presence Statistics */}
-        <div className="bg-white dark:bg-dark-2 p-8 rounded-3xl border border-stroke dark:border-white/10 shadow-sm flex flex-col">
-          <h4 className="font-bold text-dark dark:text-white mb-8 flex items-center gap-2">
-            <FiCheckCircle className="text-green-500" /> Statistiques de Présence
-          </h4>
+          <div className="flex items-center justify-between mb-8">
+            <h4 className="font-bold text-dark dark:text-white flex items-center gap-2">
+              <FiCheckCircle className="text-green-500" /> Statistiques de Présence
+            </h4>
+            
+            {/* Session Selector */}
+            <select 
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="bg-gray-100 dark:bg-dark-3 text-[10px] font-black uppercase tracking-wider text-primary border-none rounded-lg px-2 py-1 outline-none cursor-pointer"
+            >
+              {availableSessions.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
           
           <div className="flex-grow flex items-center justify-center min-h-[250px]">
             <ResponsiveContainer width="100%" height={250}>

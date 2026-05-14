@@ -11,10 +11,20 @@ import { FiPrinter } from 'react-icons/fi';
 const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingXML, setIsExportingXML] = useState(false);
+  const [selectedSession, setSelectedSession] = useState('d1s1');
   
   const [pdfDaysPerPage, setPdfDaysPerPage] = useState(4);
   const customFieldsConfig = JSON.parse(event.customFields || '[]');
   const attendanceDays = event.attendanceDays || 1;
+  const sessionsPerDay = event.sessionsPerDay || 1;
+
+  // Prepare available sessions
+  const availableSessions = [];
+  for (let d = 1; d <= attendanceDays; d++) {
+    for (let s = 1; s <= sessionsPerDay; s++) {
+      availableSessions.push({ id: `d${d}s${s}`, label: `J${d}-S${s}` });
+    }
+  }
 
   const exportPDF = async () => {
     setIsExportingPDF(true);
@@ -186,6 +196,18 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
         </h3>
          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-dark-3 rounded-lg border border-stroke dark:border-white/10">
+              <span className="text-[10px] font-black text-gray-400 uppercase">Session :</span>
+              <select 
+                value={selectedSession} 
+                onChange={(e) => setSelectedSession(e.target.value)}
+                className="bg-transparent text-xs font-bold text-primary outline-none"
+              >
+                {availableSessions.map(s => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-dark-3 rounded-lg border border-stroke dark:border-white/10">
               <span className="text-[10px] font-black text-gray-400 uppercase">Jours / Page :</span>
               <select 
                 value={pdfDaysPerPage} 
@@ -262,6 +284,7 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
                     {field.label}
                   </th>
                 ))}
+                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider text-center">Présence</th>
                 <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider text-center">Statut</th>
                 <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider text-right">Actions</th>
               </tr>
@@ -298,6 +321,16 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
                         )}
                       </td>
                     ))}
+
+                    <td className="p-6 text-center">
+                      {JSON.parse(guest.attendance || '{}')[selectedSession] ? (
+                        <span className="inline-flex items-center gap-1 text-green-500 font-bold text-xs">
+                          <FiCheckCircle /> Présent
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">-</span>
+                      )}
+                    </td>
 
                     <td className="p-6 text-center">
                       <span className={cn("inline-flex px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border", {
