@@ -49,8 +49,17 @@ const OAuth = ({ className, handleClose, disable }) => {
       if (result?.error) {
         setFillFiledMessage('Email ou mot de passe incorrect')
       } else {
+        // Fetch session to check role
+        const res = await fetch('/api/auth/session')
+        const session = await res.json()
+        
         handleClose && handleClose()
-        push('/dashboard')
+        
+        if (session?.user?.role === 'STAFF') {
+          push('/scan')
+        } else {
+          push('/dashboard')
+        }
       }
       
       setLoading(false)
