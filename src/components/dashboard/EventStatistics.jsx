@@ -82,8 +82,6 @@ export default function EventStatistics({ event, guests }) {
       const strV = String(v).trim();
       if (!strV) return;
       
-      const key = strV.toLowerCase();
-      // Use the manual group name if it exists, otherwise use the original value
       const groupName = fieldGroups[strV] || strV;
       const groupKey = groupName.toLowerCase();
 
@@ -125,17 +123,10 @@ export default function EventStatistics({ event, guests }) {
     guests.forEach(guest => {
       try {
         const att = JSON.parse(guest.attendance || '{}');
-        
         if (selectedSession === 'all') {
-          // If any session has true, mark as present
-          if (Object.values(att).some(v => v === true)) {
-            presentCount++;
-          }
+          if (Object.values(att).some(v => v === true)) presentCount++;
         } else {
-          // Check specific session
-          if (att[selectedSession] === true) {
-            presentCount++;
-          }
+          if (att[selectedSession] === true) presentCount++;
         }
       } catch (e) {}
     });
@@ -146,7 +137,6 @@ export default function EventStatistics({ event, guests }) {
     ];
   }, [guests, selectedSession]);
 
-  // Custom Tooltip for professional look
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -184,17 +174,7 @@ export default function EventStatistics({ event, guests }) {
         return (
           <ResponsiveContainer width="100%" height={400}>
             <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                innerRadius={80}
-                outerRadius={140}
-                paddingAngle={5}
-                dataKey="value"
-                stroke="none"
-                label={({ name, value }) => `${name}: ${value}`}
-              >
+              <Pie data={chartData} cx="50%" cy="50%" innerRadius={80} outerRadius={140} paddingAngle={5} dataKey="value" stroke="none" label={({ name, value }) => `${name}: ${value}`}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -269,25 +249,14 @@ export default function EventStatistics({ event, guests }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          {/* Field Selector */}
           <div className="flex flex-wrap items-center gap-2 bg-gray-50 dark:bg-dark-3 p-1 rounded-xl border border-stroke dark:border-white/5 max-w-full overflow-x-auto custom-scrollbar">
             {availableFields.map(field => (
-              <button
-                key={field.name}
-                onClick={() => setSelectedField(field.name)}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                  selectedField === field.name 
-                    ? "bg-white dark:bg-dark-2 text-primary shadow-sm" 
-                    : "text-body-color hover:text-dark dark:hover:text-white"
-                )}
-              >
+              <button key={field.name} onClick={() => setSelectedField(field.name)} className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap", selectedField === field.name ? "bg-white dark:bg-dark-2 text-primary shadow-sm" : "text-body-color hover:text-dark dark:hover:text-white")}>
                 {field.label}
               </button>
             ))}
           </div>
 
-          {/* Chart Type Selector */}
           <div className="flex items-center gap-1 bg-gray-50 dark:bg-dark-3 p-1 rounded-xl border border-stroke dark:border-white/5">
             {[
               { id: 'bar', icon: FiBarChart2 },
@@ -295,32 +264,13 @@ export default function EventStatistics({ event, guests }) {
               { id: 'area', icon: FiTrendingUp },
               { id: 'line', icon: FiActivity },
             ].map(type => (
-              <button
-                key={type.id}
-                onClick={() => setChartType(type.id)}
-                className={cn(
-                  "p-2 rounded-lg transition-all",
-                  chartType === type.id 
-                    ? "bg-white dark:bg-dark-2 text-primary shadow-sm" 
-                    : "text-body-color hover:text-dark dark:hover:text-white"
-                )}
-                title={type.id.charAt(0).toUpperCase() + type.id.slice(1)}
-              >
+              <button key={type.id} onClick={() => setChartType(type.id)} className={cn("p-2 rounded-lg transition-all", chartType === type.id ? "bg-white dark:bg-dark-2 text-primary shadow-sm" : "text-body-color hover:text-dark dark:hover:text-white")} title={type.id.charAt(0).toUpperCase() + type.id.slice(1)}>
                 <type.icon size={20} />
               </button>
             ))}
           </div>
 
-          {/* Grouping Toggle */}
-          <button
-            onClick={() => setShowGroupsManager(!showGroupsManager)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border",
-              showGroupsManager 
-                ? "bg-primary text-white border-primary" 
-                : "bg-white dark:bg-dark-2 text-dark dark:text-white border-stroke dark:border-white/10 hover:border-primary/50"
-            )}
-          >
+          <button onClick={() => setShowGroupsManager(!showGroupsManager)} className={cn("flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border", showGroupsManager ? "bg-primary text-white border-primary" : "bg-white dark:bg-dark-2 text-dark dark:text-white border-stroke dark:border-white/10 hover:border-primary/50")}>
             <FiLink size={16} />
             <span>Lier les valeurs</span>
           </button>
@@ -360,24 +310,10 @@ export default function EventStatistics({ event, guests }) {
                 />
               </div>
             ))}
-            {uniqueValues.length === 0 && (
-              <div className="col-span-full py-10 text-center text-body-color italic text-sm">
-                Aucune valeur trouvée pour ce champ
-              </div>
-            )}
+            {uniqueValues.length === 0 && <div className="col-span-full py-10 text-center text-body-color italic text-sm">Aucune valeur trouvée pour ce champ</div>}
           </div>
-          
           <div className="mt-6 flex justify-end gap-3">
-             <button 
-              onClick={() => {
-                const newGroups = { ...valueGroups };
-                delete newGroups[selectedField];
-                setValueGroups(newGroups);
-              }} 
-              className="text-[10px] font-bold text-red-500 hover:underline uppercase tracking-wider"
-            >
-              Réinitialiser ce champ
-            </button>
+             <button onClick={() => { const newGroups = { ...valueGroups }; delete newGroups[selectedField]; setValueGroups(newGroups); }} className="text-[10px] font-bold text-red-500 hover:underline uppercase tracking-wider">Réinitialiser ce champ</button>
           </div>
         </div>
       )}
@@ -396,37 +332,25 @@ export default function EventStatistics({ event, guests }) {
           {renderChart()}
         </div>
 
-        {/* Presence Statistics */}
+        {/* Presence Statistics Card */}
+        <div className="bg-white dark:bg-dark-2 p-8 rounded-3xl border border-stroke dark:border-white/10 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h4 className="font-bold text-dark dark:text-white flex items-center gap-2">
-              <FiCheckCircle className="text-green-500" /> Statistiques de Présence
+              <FiCheckCircle className="text-green-500" /> Présence
             </h4>
-            
-            {/* Session Selector */}
             <select 
               value={selectedSession}
               onChange={(e) => setSelectedSession(e.target.value)}
               className="bg-gray-100 dark:bg-dark-3 text-[10px] font-black uppercase tracking-wider text-primary border-none rounded-lg px-2 py-1 outline-none cursor-pointer"
             >
-              {availableSessions.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
+              {availableSessions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </div>
           
           <div className="flex-grow flex items-center justify-center min-h-[250px]">
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie
-                  data={attendanceStats}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
+                <Pie data={attendanceStats} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
                   <Cell fill="#10B981" />
                   <Cell fill="#EF4444" opacity={0.1} />
                 </Pie>
