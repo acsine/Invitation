@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import OutsideClickHandler from 'react-outside-click-handler'
 import cn from 'classnames'
 import Icon from '../Icon'
+import { FiX } from 'react-icons/fi'
 
 const Modal = ({
   outerClassName,
@@ -42,17 +43,18 @@ const Modal = ({
   if (!mounted || !visible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-dark/20 backdrop-blur-sm p-5">
-      <div className={cn("relative w-full max-w-2xl", outerClassName)}>
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-md p-4 sm:p-6 animate-fadeIn">
+      <div className={cn("relative w-full max-w-2xl animate-in zoom-in-95 duration-200", outerClassName)}>
         <OutsideClickHandler onOutsideClick={disable ? () => {} : onClose}>
-          <div className={cn("relative rounded-lg bg-white p-8 shadow-3 dark:bg-dark-2 sm:p-12", containerClassName)}>
+          <div className={cn("relative rounded-2xl glass-card bg-white/90 dark:bg-slate-900/90 p-6 sm:p-10 shadow-2xl border border-white/60 dark:border-slate-800", containerClassName)}>
             {children}
             {!disable && (
               <button 
-                className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full text-body-color hover:text-primary" 
+                type="button"
+                className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" 
                 onClick={onClose}
               >
-                <Icon name="close" size="14" />
+                <FiX size={18} />
               </button>
             )}
           </div>
@@ -64,4 +66,3 @@ const Modal = ({
 }
 
 export default Modal
-

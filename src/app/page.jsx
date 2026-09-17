@@ -3,7 +3,7 @@
 import React from 'react';
 import AppLink from '../components/AppLink';
 import Image from 'next/image';
-import { FiCheck, FiZap, FiTarget, FiUsers, FiAward, FiArrowRight, FiPlay, FiStar } from 'react-icons/fi';
+import { FiCheck, FiZap, FiTarget, FiUsers, FiAward, FiArrowRight, FiPlay, FiStar, FiShield, FiTrendingUp, FiQrCode } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Button from '../components/ui/Button';
@@ -32,250 +32,271 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden selection:bg-primary selection:text-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-x-hidden selection:bg-indigo-600 selection:text-white">
       {isNavigatingLoader && <FullPageLoader message="Initialisation de la session..." />}
       
-      {/* --- Animated Background Elements --- */}
+      {/* --- Ambient Background Glows --- */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] animate-pulse-soft" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-100 rounded-full blur-[120px] animate-pulse-soft" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-[140px] animate-pulse-soft" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-purple-500/10 dark:bg-purple-600/15 rounded-full blur-[140px] animate-pulse-soft" style={{ animationDelay: '3s' }} />
       </div>
 
-      {/* --- Navigation --- */}
-      <nav className="fixed top-0 w-full z-50 glass-card border-b border-white/50">
-        <div className="container mx-auto px-8 h-20 flex items-center justify-between">
+      {/* --- Floating Glass Header --- */}
+      <header className="fixed top-0 w-full z-50 glass-nav">
+        <div className="container mx-auto px-6 sm:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3 group cursor-pointer">
-            <div className="w-11 h-11 bg-primary rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform duration-300">I</div>
-            <span className="text-2xl font-black tracking-tighter uppercase bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-primary">InviteManager</span>
+            <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/25 group-hover:rotate-6 transition-transform duration-300">
+              I
+            </div>
+            <span className="text-xl sm:text-2xl font-black tracking-tight uppercase gradient-text">
+              InviteManager
+            </span>
           </div>
-          <div className="hidden lg:flex items-center gap-10">
-            <a href="#solutions" className="text-sm font-bold text-gray-500 hover:text-primary transition-all relative group">Solutions<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" /></a>
-            <a href="#pricing" className="text-sm font-bold text-gray-500 hover:text-primary transition-all relative group">Tarifs<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" /></a>
-            <a href="#demo" className="text-sm font-bold text-gray-500 hover:text-primary transition-all relative group">Démo<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full" /></a>
-            <div className="h-6 w-px bg-gray-200 mx-2" />
+          <div className="hidden lg:flex items-center gap-8">
+            <a href="#solutions" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Solutions
+            </a>
+            <a href="#pricing" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Tarifs
+            </a>
+            <a href="#features" className="text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Fonctionnalités
+            </a>
+            <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
             <Button 
               variant="ghost"
+              size="sm"
               href="/auth/login"
               onClick={() => handleNav('/auth/login')}
               loading={navLoading === '/auth/login'}
-              className="text-sm font-bold text-gray-900 hover:text-primary transition-colors h-auto p-0"
             >
               Connexion
             </Button>
             <Button 
+              variant="glow"
+              size="sm"
               href="/auth/register"
               onClick={() => handleNav('/auth/register')}
               loading={navLoading === '/auth/register'}
-              className="px-8 py-4 bg-gray-900 text-white rounded-2xl h-auto"
             >
-              Démarrer
+              Démarrer gratuit <FiArrowRight size={16} />
             </Button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* --- Massive Hero Section --- */}
-      <section className="relative min-h-screen flex items-center pt-20">
-        <div className="container mx-auto px-8 relative z-10">
-          <div className="max-w-5xl mx-auto text-center space-y-10">
-            <div className="inline-flex items-center gap-3 px-6 py-2.5 rounded-full bg-white/50 backdrop-blur-md border border-white shadow-xl text-primary text-[10px] font-black uppercase tracking-[0.3em] animate-in fade-in zoom-in duration-1000">
-              <FiStar className="text-yellow-500 animate-spin" style={{ animationDuration: '3s' }} />
-              Plateforme N°1 en Afrique de l'Ouest
+      {/* --- Main Hero Section --- */}
+      <section className="relative pt-36 pb-20 md:pt-44 md:pb-28 overflow-hidden">
+        <div className="container mx-auto px-6 sm:px-8 relative z-10">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full glass-card border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider animate-fadeIn">
+              <FiStar className="text-amber-500 fill-amber-500" size={14} />
+              <span>Plateforme N°1 de gestion d'événements</span>
             </div>
             
-            <h1 className="text-6xl md:text-8xl lg:text-[110px] font-black leading-[0.85] tracking-tighter text-gray-900 animate-in slide-in-from-bottom-12 duration-1000">
+            <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight leading-[0.95] text-slate-900 dark:text-white">
               Le futur de vos <br/>
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-blue-600 to-purple-600 animate-gradient-x">
+              <span className="gradient-text">
                 événements
-              </span> est ici.
+              </span> commence ici.
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-500 font-medium max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
-              Simplifiez la logistique, impressionnez vos invités et gérez tout depuis un seul tableau de bord élégant.
+            <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-300 font-medium max-w-2xl mx-auto leading-relaxed">
+              Simplifiez la logistique, créez des pass QR personnalisés et gérez vos invités en temps réel depuis un tableau de bord ultra-ergonomique.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-6 justify-center pt-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button 
+                variant="glow"
+                size="lg"
                 href="/auth/register"
                 onClick={() => handleNav('/auth/register')}
                 loading={navLoading === '/auth/register'}
-                className="px-14 py-7 bg-primary text-white rounded-[28px] h-auto"
+                className="shadow-xl"
               >
-                Créer un compte <FiArrowRight className="group-hover:translate-x-2 transition-transform" />
+                Créer mon compte <FiArrowRight size={18} />
               </Button>
               <Button 
+                variant="glass"
+                size="lg"
                 href="/invite/demo"
                 onClick={() => handleNav('/invite/demo')}
                 loading={navLoading === '/invite/demo'}
-                variant="outline"
-                className="px-14 py-7 rounded-[28px] h-auto"
               >
-                <FiPlay /> Voir la démo
+                <FiPlay size={18} className="text-indigo-600 dark:text-indigo-400" /> Voir la démo
               </Button>
             </div>
           </div>
-          {/* Full Width Immersive Image with Text Overlay */}
-          <div className="mt-20 relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-700 overflow-hidden group">
-            <div className="relative h-[60vh] md:h-[85vh] w-full">
+
+          {/* Immersive Platform Mockup Banner */}
+          <div className="mt-16 relative w-full rounded-3xl overflow-hidden glass-card p-3 border border-white/50 dark:border-slate-800 shadow-2xl hover-lift">
+            <div className="relative h-[350px] sm:h-[500px] md:h-[600px] w-full rounded-2xl overflow-hidden">
               <Image 
                 src="/images/Gemini_Generated_Image_3d2q3t3d2q3t3d2q.png" 
-                alt="InviteManager Interface" 
+                alt="InviteManager Platform" 
                 fill
-                className="object-cover transition-transform duration-[10s] group-hover:scale-110 blur-[8px]"
+                className="object-cover"
                 priority
               />
-              {/* Background Overlay */}
-              <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
-              
-              {/* Advertising Text Overlay */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-black/10 backdrop-blur-[1px]">
-                 <div className="max-w-4xl space-y-8 animate-in zoom-in duration-1000 delay-1000">
-                    <div className="inline-flex px-4 py-1.5 rounded-full bg-primary/20 backdrop-blur-md border border-white/30 text-white text-[10px] font-black uppercase tracking-[0.3em] mb-4">
-                       Innovation Technologique
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex flex-col justify-end p-6 sm:p-12">
+                <div className="max-w-2xl space-y-4">
+                  <span className="px-3 py-1 rounded-md bg-indigo-600/90 text-white text-xs font-extrabold uppercase tracking-wider">
+                    Interface Nouvelle Génération
+                  </span>
+                  <h3 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight">
+                    Une expérience fluide pour les organisateurs & les invités.
+                  </h3>
+                  <div className="flex items-center gap-6 pt-2 text-white/90 text-sm font-semibold">
+                    <div className="flex items-center gap-2">
+                      <FiCheck className="text-emerald-400" size={18} /> <span>100% cloud & mobile</span>
                     </div>
-                    <h2 className="text-4xl md:text-7xl font-black text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] leading-[1.1] tracking-tighter">
-                       L'outil ultime pour vos <br/>
-                       <span className="text-primary italic underline decoration-white/20 underline-offset-8">événements d'exception.</span>
-                    </h2>
-                    <p className="text-xl md:text-2xl text-white font-bold drop-shadow-lg max-w-2xl mx-auto opacity-95 leading-relaxed">
-                       Créez, gérez et impressionnez. La puissance du digital au service de vos cérémonies les plus prestigieuses.
-                    </p>
-                    <div className="pt-8 flex justify-center gap-6">
-                        <div className="flex flex-col items-center gap-2">
-                           <div className="text-3xl font-black text-white">0s</div>
-                           <div className="text-[10px] font-black text-white/70 uppercase tracking-widest">Temps perdu</div>
-                        </div>
-                        <div className="w-px h-12 bg-white/20" />
-                        <div className="flex flex-col items-center gap-2">
-                           <div className="text-3xl font-black text-white">100%</div>
-                           <div className="text-[10px] font-black text-white/70 uppercase tracking-widest">Satisfaction</div>
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <FiCheck className="text-emerald-400" size={18} /> <span>Check-in instantané</span>
                     </div>
-                 </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* --- Feature Grid with Premium Cards --- */}
-      <section className="py-32 relative overflow-hidden" id="solutions">
-        <div className="container mx-auto px-8 relative z-10 text-center mb-20">
-          <h2 className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-4">Expertise Événementielle</h2>
-          <h3 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter">Des solutions pensées <br/> pour <span className="text-primary italic">chaque étape.</span></h3>
-        </div>
-        <div className="container mx-auto px-8 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-             {[
-               { t: "Invitations", d: "Créez des designs uniques qui marquent les esprits dès le premier regard.", img: "/images/Gemini_Generated_Image_6wroiy6wroiy6wro.png", icon: FiStar },
-               { t: "Badges", d: "Automatisez la production de badges HD pour des milliers d'invités sans effort.", img: "/images/Gemini_Generated_Image_dut6h2dut6h2dut6.png", icon: FiZap },
-               { t: "Check-in", d: "Contrôlez les accès en temps réel avec une technologie QR ultra-rapide.", img: "/images/Gemini_Generated_Image_eg2gk8eg2gk8eg2g.png", icon: FiTarget }
-             ].map((item, i) => (
-               <div key={i} className="group relative bg-white rounded-[48px] p-4 border border-gray-100 shadow-2xl hover:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] transition-all duration-700 overflow-hidden flex flex-col">
-                 <div className="relative h-[400px] rounded-[40px] overflow-hidden mb-8">
-                   <Image src={item.img} alt={item.t} fill className="object-cover group-hover:scale-110 transition-transform duration-[2s]" />
-                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-transparent to-transparent" />
-                   
-                   {/* Floating Icon Overlay */}
-                   <div className="absolute top-6 left-6 w-14 h-14 glass-card rounded-2xl flex items-center justify-center text-primary shadow-xl group-hover:bg-primary group-hover:text-white transition-all duration-500">
-                      <item.icon size={24} />
-                   </div>
-                   
-                   <div className="absolute bottom-8 left-8 right-8">
-                      <h4 className="text-2xl font-black text-white uppercase tracking-tighter mb-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">{item.t}</h4>
-                      <div className="w-10 h-1 bg-primary rounded-full group-hover:w-full transition-all duration-700" />
-                   </div>
-                 </div>
-                 <div className="px-4 pb-4 flex-1 flex flex-col">
-                    <p className="text-gray-500 font-medium leading-relaxed mb-8">{item.d}</p>
-                    <div className="mt-auto">
-                       <button className="w-full py-4 bg-gray-50 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:bg-primary group-hover:text-white group-hover:shadow-lg transition-all duration-500">
-                          Découvrir la solution
-                       </button>
-                    </div>
-                 </div>
-               </div>
-             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* --- Full-Width Gradient Immersive Section --- */}
-      <section className="relative py-48 my-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-blue-900 to-black animate-gradient-xy" />
-        <Image 
-          src="/images/Gemini_Generated_Image_obh563obh563obh5.png" 
-          alt="Immersive" 
-          fill 
-          className="object-cover opacity-30 mix-blend-overlay scale-110 animate-float" 
-        />
-        <div className="container mx-auto px-8 relative z-10 text-center text-white space-y-12">
-           <h2 className="text-5xl md:text-8xl font-black tracking-tighter leading-none animate-in fade-in slide-in-from-bottom-10 duration-1000">
-             Vivez l'expérience <br/> <span className="text-white/50 italic underline decoration-primary underline-offset-8">sans compromis.</span>
-           </h2>
-           <p className="text-xl md:text-3xl text-white/70 max-w-3xl mx-auto font-medium leading-relaxed">
-             Des mariages les plus intimes aux conférences internationales de 10 000 personnes.
-           </p>
-           <div className="pt-10">
-              <Button 
-                href="/auth/register"
-                onClick={() => handleNav('/auth/register')}
-                loading={navLoading === '/auth/register'}
-                className="px-16 py-7 bg-white text-gray-900 rounded-[32px] h-auto shadow-2xl"
-              >
-                Essayer gratuitement
-              </Button>
-           </div>
-        </div>
-      </section>
-
-      {/* --- Professional Table Section --- */}
-      <section className="py-32 bg-gray-50/50">
-        <div className="container mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
-          <div className="relative animate-float" style={{ animationDelay: '1s' }}>
-             <div className="relative rounded-[60px] overflow-hidden shadow-2xl border-8 border-white">
-                <Image 
-                  src="/images/Gemini_Generated_Image_dut6h2dut6h2dut6.png" 
-                  alt="Feature Detail" 
-                  width={800} 
-                  height={1000} 
-                  className="w-full object-cover"
-                />
-             </div>
-             <div className="absolute -bottom-10 -right-10 bg-gradient-to-br from-primary to-blue-600 p-10 rounded-[40px] shadow-2xl text-white max-w-xs animate-in zoom-in duration-700 delay-1000">
-                <FiZap size={40} className="mb-6" />
-                <div className="text-4xl font-black mb-2">99.9%</div>
-                <div className="text-xs font-black uppercase tracking-widest opacity-80">De satisfaction client</div>
-             </div>
-          </div>
-          <div className="space-y-10">
-            <h3 className="text-5xl font-black text-gray-900 tracking-tighter leading-none">
-              Un workflow <span className="text-primary">simplifié</span> <br/> pour vos équipes.
-            </h3>
-            <p className="text-xl text-gray-500 font-medium leading-relaxed">
-              Nous avons supprimé toute la complexité inutile pour ne garder que l'essentiel : la réussite de votre événement.
-            </p>
-            <div className="space-y-6">
-              {[
-                { t: "Zéro installation", d: "Tout se passe dans votre navigateur." },
-                { t: "Mobile Ready", d: "Gérez vos entrées depuis n'importe quel smartphone." },
-                { t: "Support 24/7", d: "Une équipe dédiée pour vous accompagner." }
-              ].map((f, i) => (
-                <div key={i} className="flex gap-6 items-center p-6 bg-white rounded-3xl border border-gray-100 hover:border-primary/30 hover:shadow-lg transition-all group">
-                   <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                     <FiCheck size={24} />
-                   </div>
-                   <div>
-                     <h4 className="text-lg font-black text-gray-900 uppercase tracking-tighter">{f.t}</h4>
-                     <p className="text-gray-500 text-sm font-medium">{f.d}</p>
-                   </div>
+      {/* --- Key Metrics Section --- */}
+      <section className="py-12 bg-white/60 dark:bg-slate-900/60 border-y border-slate-200/60 dark:border-slate-800/60 backdrop-blur-md">
+        <div className="container mx-auto px-6 sm:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { val: "50K+", label: "Invités gérés", icon: FiUsers },
+              { val: "99.9%", label: "Taux de satisfaction", icon: FiStar },
+              { val: "< 1s", label: "Temps de scan QR", icon: FiQrCode },
+              { val: "24/7", label: "Disponibilité service", icon: FiShield }
+            ].map((stat, idx) => (
+              <div key={idx} className="space-y-2 p-4 rounded-2xl transition-all hover:bg-white/80 dark:hover:bg-slate-800/50">
+                <div className="inline-flex p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 mb-1">
+                  <stat.icon size={22} />
                 </div>
-              ))}
+                <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">{stat.val}</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* --- Feature Grid Section --- */}
+      <section className="py-24" id="solutions">
+        <div className="container mx-auto px-6 sm:px-8 space-y-16">
+          <div className="text-center max-w-2xl mx-auto space-y-4">
+            <h2 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Solutions Événementielles</h2>
+            <h3 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+              Pensé pour l'excellence de vos cérémonies.
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { 
+                t: "Pass & Badges sur-mesure", 
+                d: "Créez des cartons d'invitations visuellement époustouflants avec QR code unique.", 
+                img: "/images/Gemini_Generated_Image_6wroiy6wroiy6wro.png", 
+                icon: FiStar 
+              },
+              { 
+                t: "Impression & Badges HD", 
+                d: "Générez des badges professionnels haute résolution prêts pour l'impression.", 
+                img: "/images/Gemini_Generated_Image_dut6h2dut6h2dut6.png", 
+                icon: FiZap 
+              },
+              { 
+                t: "Contrôle d'Accès QR Code", 
+                d: "Scannez les invitations à l'entrée depuis n'importe quel smartphone sans matériel lourd.", 
+                img: "/images/Gemini_Generated_Image_eg2gk8eg2gk8eg2g.png", 
+                icon: FiTarget 
+              }
+            ].map((item, i) => (
+              <div key={i} className="group glass-card rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800/80 hover-lift flex flex-col justify-between">
+                <div className="space-y-6">
+                  <div className="relative h-56 rounded-xl overflow-hidden">
+                    <Image src={item.img} alt={item.t} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent" />
+                    <div className="absolute top-4 left-4 p-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-xl text-indigo-600 dark:text-indigo-400 shadow-md">
+                      <item.icon size={20} />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{item.t}</h4>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{item.d}</p>
+                  </div>
+                </div>
+                <div className="pt-6">
+                  <Button variant="outline" size="sm" className="w-full">
+                    En savoir plus
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* --- Workflow & Benefits Section --- */}
+      <section className="py-24 bg-white dark:bg-slate-900/40 border-y border-slate-200/60 dark:border-slate-800/60" id="features">
+        <div className="container mx-auto px-6 sm:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Simplification Maximale</span>
+                <h3 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white leading-tight">
+                  Un contrôle total, de la création à l'émargement.
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+                  Conçu pour libérer les organisateurs du stress de la gestion manuelle. Suivez les confirmations d'invitation et scannez les entrées en temps réel.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { title: "Zéro installation de logiciel", desc: "Accessible directement sur le web depuis PC, Mac, et mobile." },
+                  { title: "Scanner QR Code intégré", desc: "Transformez vos smartphones de staff en terminaux de check-in." },
+                  { title: "Statistiques en temps réel", desc: "Visualisez le taux de présence et l'affluence en direct." }
+                ].map((feat, idx) => (
+                  <div key={idx} className="flex gap-4 p-4 rounded-xl glass-card border border-slate-200/60 dark:border-slate-800/60">
+                    <div className="p-3 bg-indigo-100 dark:bg-indigo-950/60 rounded-xl text-indigo-600 dark:text-indigo-400 h-fit">
+                      <FiCheck size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-slate-900 dark:text-white">{feat.title}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{feat.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative glass-card p-4 rounded-3xl border border-white/60 dark:border-slate-800 shadow-2xl hover-lift">
+              <div className="relative h-[450px] rounded-2xl overflow-hidden">
+                <Image 
+                  src="/images/Gemini_Generated_Image_obh563obh563obh5.png" 
+                  alt="Workflow Overview" 
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent p-8 flex flex-col justify-end">
+                  <div className="glass-card p-6 rounded-2xl border border-white/20 text-white space-y-2">
+                    <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase">
+                      <FiTrendingUp size={16} /> <span>Performance Événementielle</span>
+                    </div>
+                    <div className="text-xl font-bold">100% de fluidité garantie pour vos invités</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* --- Footer Component --- */}
+      <Footers />
     </div>
   );
 }
