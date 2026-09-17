@@ -10,7 +10,9 @@ import Footer from '../components/Footer';
 
 export function Providers({ children }) {
   const pathname = usePathname();
-  const hideLayout = pathname?.startsWith('/auth') || pathname?.startsWith('/dashboard');
+  // Hide global dashboard layout header/footer on landing pages (/ or /fr) and auth/dashboard pages
+  const isLandingPage = pathname === '/' || pathname === '/fr' || pathname === '/fr/' || pathname?.startsWith('/fr');
+  const hideLayout = isLandingPage || pathname?.startsWith('/auth') || pathname?.startsWith('/dashboard');
 
   return (
     <SessionProvider>
@@ -23,10 +25,8 @@ export function Providers({ children }) {
           {!hideLayout && <Footer />}
         </div>
 
-
         <Toaster />
       </StateContext>
     </SessionProvider>
   );
 }
-

@@ -24,13 +24,13 @@ const Button = ({
   };
 
   const variants = {
-    primary: "bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:scale-[1.02]",
-    secondary: "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-md hover:bg-slate-800 dark:hover:bg-white hover:scale-[1.02]",
-    danger: "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-lg shadow-rose-500/20 hover:shadow-rose-500/35 hover:scale-[1.02]",
-    outline: "bg-transparent text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20",
-    ghost: "bg-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/60",
-    glass: "glass-card text-slate-800 dark:text-white border border-white/60 dark:border-white/10 hover:border-indigo-500/50 hover:bg-white/80 dark:hover:bg-slate-900/80 shadow-sm",
-    glow: "bg-gradient-to-r from-indigo-600 to-purple-600 text-white btn-glow",
+    primary: "bg-[#FF6500] hover:bg-[#e05900] text-white shadow-none font-black transition-all cursor-pointer",
+    secondary: "bg-[#3B52E8] hover:bg-[#2b40c7] text-white shadow-none font-bold transition-all cursor-pointer",
+    danger: "bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-md hover:scale-[1.01]",
+    outline: "bg-transparent text-slate-800 border border-slate-200 hover:border-[#3B52E8] hover:text-[#3B52E8] hover:bg-blue-50/50",
+    ghost: "bg-transparent text-slate-600 hover:text-[#FF6500] hover:bg-slate-100/70",
+    glass: "glass-card text-slate-800 border border-white/60 hover:border-[#3B52E8]/50 hover:bg-white/80 shadow-sm",
+    glow: "bg-[#FF6500] hover:bg-[#e05900] text-white shadow-none font-extrabold transition-all cursor-pointer",
   };
 
   const content = (

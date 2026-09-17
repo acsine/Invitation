@@ -51,13 +51,14 @@ export default function DashboardLayout({ children }) {
       >
         <div className="flex h-full flex-col p-8">
           {/* Logo Section */}
-          <div className="flex items-center gap-4 mb-16 px-4">
-             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-primary/20">I</div>
-             <span className="text-xl font-black tracking-tighter uppercase text-gray-900">InviteManager</span>
+          <div className="flex items-center gap-3 mb-12 px-2">
+             <span className="text-xl font-black tracking-tight uppercase text-slate-900">
+               Invite<span className="text-[#FF6500]">Manager</span>
+             </span>
           </div>
 
           <nav className="flex-1 space-y-2">
-            <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em] mb-6 px-4">Menu Principal</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-6 px-4">Menu Principal</p>
             {menu.map((x, index) => {
               const isActive = pathname === x.url || (x.url !== '/' && pathname.startsWith(x.url));
               const isLoading = navigatingTo === x.url;
@@ -71,8 +72,8 @@ export default function DashboardLayout({ children }) {
                   className={cn(
                     "group relative flex items-center gap-4 rounded-2xl px-6 py-4 text-sm font-black uppercase tracking-widest transition-all duration-300",
                     isActive
-                      ? "bg-primary text-white shadow-xl shadow-primary/20"
-                      : "text-gray-400 hover:bg-gray-50 hover:text-primary"
+                      ? "bg-[#3B52E8] text-white shadow-lg shadow-blue-500/20"
+                      : "text-slate-500 hover:bg-blue-50/60 hover:text-[#3B52E8]"
                   )}
                 >
                   <div className="flex items-center justify-center">
@@ -91,11 +92,11 @@ export default function DashboardLayout({ children }) {
             })}
           </nav>
 
-          <div className="pt-8 space-y-4 border-t border-gray-50">
+          <div className="pt-8 space-y-4 border-t border-gray-100">
             {session?.user?.role === 'ADMIN' && (
               <AppLink
                 href="/admin"
-                className="flex items-center gap-4 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 transition-all border border-primary/10"
+                className="flex items-center gap-4 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest text-[#3B52E8] bg-[#3B52E8]/5 hover:bg-[#3B52E8]/10 transition-all border border-[#3B52E8]/10"
               >
                 <FiPieChart size={20} />
                 <span>Administration</span>

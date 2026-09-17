@@ -1,16 +1,25 @@
 import { NextResponse } from 'next/server';
 
 export function middleware(request) {
-  // Get response
-  const response = NextResponse.next();
+  const { pathname } = request.nextUrl;
 
-  // Add CORS headers for mobile API
-  if (request.nextUrl.pathname.startsWith('/api/mobile')) {
+  // Handle /fr or /fr/* routes by rewriting to root or stripping /fr prefix
+  if (pathname === '/fr' || pathname === '/fr/') {
+    return NextResponse.rewrite(new URL('/', request.url));
+  }
+
+  if (pathname.startsWith('/fr/')) {
+    const targetPath = pathname.replace(/^\/fr/, '') || '/';
+    return NextResponse.rewrite(new URL(targetPath, request.url));
+  }
+
+  // Handle CORS for mobile API
+  if (pathname.startsWith('/api/mobile')) {
+    const response = NextResponse.next();
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // Handle preflight requests
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, {
         status: 204,
@@ -21,11 +30,16 @@ export function middleware(request) {
         },
       });
     }
+    return response;
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: '/api/mobile/:path*',
+  matcher: [
+    '/fr',
+    '/fr/:path*',
+    '/api/mobile/:path*'
+  ],
 };
