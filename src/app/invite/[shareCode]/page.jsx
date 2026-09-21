@@ -524,7 +524,7 @@ export default function InvitePage({ params }) {
         setCurrentStep(3);
       }
 
-      // Short invitation text with link for other guests
+      // Short invitation text with link pre-filled directly in the message
       const shareUrl = window.location.href;
       const shareText = `🎉 Bonjour ! Je t'invite à l'événement "${event.name}".\n\n👉 Génère ton Pass d'accès officiel avec QR Code ici :\n${shareUrl}`;
 
@@ -553,66 +553,98 @@ export default function InvitePage({ params }) {
 
       const canShareFiles = !!(imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] }));
 
-      // Native Web Share API with files support (Mobile Safari, Chrome Android, etc.)
+      // 1. WhatsApp specific share action
+      if (platform === 'whatsapp') {
+        if (canShareFiles) {
+          try {
+            await navigator.share({
+              title: `Invitation - ${event.name}`,
+              text: shareText,
+              files: [imageFile],
+            });
+            toast.success('Invitation avec texte, lien et image ouverte sur WhatsApp !');
+            return;
+          } catch (e) {
+            if (e.name === 'AbortError') return;
+          }
+        }
+
+        // Deep link pre-fills the message box in WhatsApp automatically (zero copy-paste required)
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+        window.open(waUrl, '_blank');
+
+        if (sourceUrl) {
+          const link = document.createElement('a');
+          link.download = `invitation_${(event.name || 'pass').replace(/\s+/g, '_')}.png`;
+          link.href = sourceUrl;
+          link.click();
+        }
+
+        toast.success('WhatsApp ouvert avec texte et lien pré-remplis !');
+        return;
+      }
+
+      // 2. Facebook specific share action
+      if (platform === 'facebook') {
+        if (canShareFiles) {
+          try {
+            await navigator.share({
+              title: `Invitation - ${event.name}`,
+              text: shareText,
+              files: [imageFile],
+            });
+            toast.success('Invitation partagée sur Facebook !');
+            return;
+          } catch (e) {
+            if (e.name === 'AbortError') return;
+          }
+        }
+        const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+        window.open(fbUrl, '_blank', 'width=600,height=500');
+
+        if (sourceUrl) {
+          const link = document.createElement('a');
+          link.download = `invitation_${(event.name || 'pass').replace(/\s+/g, '_')}.png`;
+          link.href = sourceUrl;
+          link.click();
+        }
+
+        toast.success('Facebook ouvert avec texte et lien pré-remplis !');
+        return;
+      }
+
+      // 3. General share action ('all')
       if (canShareFiles) {
         try {
           await navigator.share({
             title: `Invitation - ${event.name}`,
             text: shareText,
-            url: shareUrl,
             files: [imageFile],
           });
           toast.success('Invitation, texte et image partagés !');
           return;
         } catch (e) {
           if (e.name === 'AbortError') return;
-          console.warn('Native file share failed or cancelled, using fallback:', e);
         }
       }
 
-      // Fallback: Automatic download of PNG image + copy text & URL to clipboard
-      if (sourceUrl) {
-        const link = document.createElement('a');
-        link.download = `invitation_${(event.name || 'pass').replace(/\s+/g, '_')}.png`;
-        link.href = sourceUrl;
-        link.click();
-      }
-
-      if (navigator.clipboard) {
+      if (navigator.share) {
         try {
-          await navigator.clipboard.writeText(shareText);
-        } catch (clipErr) {
-          console.error('Clipboard copy error:', clipErr);
+          await navigator.share({
+            title: `Invitation - ${event.name}`,
+            text: shareText,
+          });
+          toast.success('Invitation partagée avec succès !');
+          return;
+        } catch (e) {
+          if (e.name === 'AbortError') return;
         }
       }
 
-      if (platform === 'whatsapp') {
-        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-        window.open(waUrl, '_blank');
-        toast.success('Image téléchargée & texte copié ! Joignez l\'image dans votre message WhatsApp.');
-      } else if (platform === 'facebook') {
-        const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
-        window.open(fbUrl, '_blank', 'width=600,height=500');
-        toast.success('Image téléchargée & lien prêt à être partagé sur Facebook !');
-      } else {
-        // platform === 'all'
-        if (navigator.share) {
-          try {
-            await navigator.share({
-              title: `Invitation - ${event.name}`,
-              text: shareText,
-              url: shareUrl,
-            });
-            toast.success('Invitation et lien partagés avec succès !');
-          } catch (e) {
-            if (e.name !== 'AbortError') {
-              toast.success('Image téléchargée & message copié dans le presse-papier !');
-            }
-          }
-        } else {
-          toast.success('Image téléchargée & message copié dans le presse-papier !');
-        }
-      }
+      // Fallback: direct WhatsApp pre-filled window
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+      window.open(waUrl, '_blank');
+      toast.success('Invitation pré-remplie ouverte sur WhatsApp !');
 
     } catch (error) {
       console.error('Share error:', error);
