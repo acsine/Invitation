@@ -528,14 +528,72 @@ export default function InvitePage({ params }) {
       const shareUrl = window.location.href;
       const shareText = `🎉 Bonjour ! Je t'invite à l'événement "${event.name}".\n\n👉 Génère ton Pass d'accès officiel avec QR Code ici :\n${shareUrl}`;
 
+      // Retrieve image file from canvas stage or generated URL for multi-file share
+      let imageFile = null;
+      let dataUrl = '';
+      if (stageRef.current) {
+        try {
+          dataUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+        } catch (err) {
+          console.error('Error rendering stage to dataURL:', err);
+        }
+      }
+
+      const sourceUrl = dataUrl || duplicateGuest?.generatedImageUrl;
+      if (sourceUrl) {
+        try {
+          const res = await fetch(sourceUrl);
+          const blob = await res.blob();
+          const safeName = (event?.name || 'invitation').replace(/[^a-zA-Z0-9_\-]/g, '_');
+          imageFile = new File([blob], `invitation_${safeName}.png`, { type: 'image/png' });
+        } catch (err) {
+          console.error('Error creating image file:', err);
+        }
+      }
+
+      const canShareFiles = !!(imageFile && navigator.canShare && navigator.canShare({ files: [imageFile] }));
+
+      // Native Web Share API with files support (Mobile Safari, Chrome Android, etc.)
+      if (canShareFiles) {
+        try {
+          await navigator.share({
+            title: `Invitation - ${event.name}`,
+            text: shareText,
+            url: shareUrl,
+            files: [imageFile],
+          });
+          toast.success('Invitation, texte et image partagés !');
+          return;
+        } catch (e) {
+          if (e.name === 'AbortError') return;
+          console.warn('Native file share failed or cancelled, using fallback:', e);
+        }
+      }
+
+      // Fallback: Automatic download of PNG image + copy text & URL to clipboard
+      if (sourceUrl) {
+        const link = document.createElement('a');
+        link.download = `invitation_${(event.name || 'pass').replace(/\s+/g, '_')}.png`;
+        link.href = sourceUrl;
+        link.click();
+      }
+
+      if (navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(shareText);
+        } catch (clipErr) {
+          console.error('Clipboard copy error:', clipErr);
+        }
+      }
+
       if (platform === 'whatsapp') {
         const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
         window.open(waUrl, '_blank');
-        toast.success('Invitation ouverte sur WhatsApp !');
+        toast.success('Image téléchargée & texte copié ! Joignez l\'image dans votre message WhatsApp.');
       } else if (platform === 'facebook') {
         const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
         window.open(fbUrl, '_blank', 'width=600,height=500');
-        toast.success('Invitation ouverte sur Facebook !');
+        toast.success('Image téléchargée & lien prêt à être partagé sur Facebook !');
       } else {
         // platform === 'all'
         if (navigator.share) {
@@ -545,16 +603,14 @@ export default function InvitePage({ params }) {
               text: shareText,
               url: shareUrl,
             });
-            toast.success('Invitation partagée avec succès !');
+            toast.success('Invitation et lien partagés avec succès !');
           } catch (e) {
-            if (e.name !== 'AbortError' && navigator.clipboard) {
-              await navigator.clipboard.writeText(shareText);
-              toast.success('Message et lien d\'invitation copiés dans le presse-papier !');
+            if (e.name !== 'AbortError') {
+              toast.success('Image téléchargée & message copié dans le presse-papier !');
             }
           }
-        } else if (navigator.clipboard) {
-          await navigator.clipboard.writeText(shareText);
-          toast.success('Message et lien d\'invitation copiés dans le presse-papier !');
+        } else {
+          toast.success('Image téléchargée & message copié dans le presse-papier !');
         }
       }
 
