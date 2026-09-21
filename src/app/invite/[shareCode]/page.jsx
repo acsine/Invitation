@@ -407,17 +407,30 @@ export default function InvitePage({ params }) {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!validateStep1()) return;
+
     setSharingPlatform('download');
     setDuplicateGuest(null);
 
     try {
+      // If already on step 3, directly download the generated badge
+      if (currentStep === 3 && stageRef.current) {
+        const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+        const link = document.createElement('a');
+        link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
+        link.href = dataUrl;
+        link.click();
+        toast.success('Invitation téléchargée avec succès !');
+        setSharingPlatform(null);
+        return;
+      }
+
       const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
       const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1, color: { dark: '#0b1736', light: '#ffffff' } });
       setQrCodeData(realQrUrl);
 
       await new Promise(r => setTimeout(r, 120));
 
-      const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+      const dataUrl = stageRef.current ? stageRef.current.toDataURL({ pixelRatio: 2.5 }) : '';
 
       const res = await fetch(`/api/guests`, {
         method: 'POST',
@@ -436,11 +449,14 @@ export default function InvitePage({ params }) {
       const resData = await res.json();
 
       if (res.ok) {
-        const link = document.createElement('a');
-        link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
-        link.href = dataUrl;
-        link.click();
-        toast.success('Invitation téléchargée avec succès !');
+        if (dataUrl) {
+          const link = document.createElement('a');
+          link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
+          link.href = dataUrl;
+          link.click();
+        }
+        setCurrentStep(3);
+        toast.success('Invitation créée et téléchargée avec succès !');
       } else if (res.status === 409 && resData.error === 'DOUBLON') {
         setDuplicateGuest(resData.guest);
         toast.error(resData.message || 'Vous êtes déjà inscrit à cet événement');
@@ -450,72 +466,96 @@ export default function InvitePage({ params }) {
     } catch (error) {
       console.error(error);
       toast.error('Erreur lors de la génération');
+    } finally {
+      setSharingPlatform(null);
     }
-    setSharingPlatform(null);
   };
 
   const handleShare = async (platform) => {
-    if (!validateStep1()) return;
     setSharingPlatform(platform);
     setDuplicateGuest(null);
 
     try {
-      const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
-      const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1, color: { dark: '#0b1736', light: '#ffffff' } });
-      setQrCodeData(realQrUrl);
-
-      await new Promise(r => setTimeout(r, 120));
-
-      const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
-
-      const res = await fetch(`/api/guests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: tempId,
-          eventId: event.id,
-          name: guestName,
-          phone: guestPhone,
-          photoUrl: guestPhoto,
-          additionalData: JSON.stringify(additionalData),
-          generatedImageUrl: dataUrl,
-          saveToCloud: true
-        }),
-      });
-
-      const resData = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 409 && resData.error === 'DOUBLON') {
-          setDuplicateGuest(resData.guest);
-          toast.error(resData.message || 'Vous êtes déjà inscrit');
+      // If not yet on step 3, register the guest first
+      if (currentStep !== 3) {
+        if (!validateStep1()) {
           setSharingPlatform(null);
           return;
         }
-        throw new Error(resData.error);
+
+        const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
+        const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1, color: { dark: '#0b1736', light: '#ffffff' } });
+        setQrCodeData(realQrUrl);
+
+        await new Promise(r => setTimeout(r, 120));
+
+        let stageUrl = '';
+        if (stageRef.current) {
+          stageUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+        }
+
+        const res = await fetch(`/api/guests`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: tempId,
+            eventId: event.id,
+            name: guestName,
+            phone: guestPhone,
+            photoUrl: guestPhoto,
+            additionalData: JSON.stringify(additionalData),
+            generatedImageUrl: stageUrl,
+            saveToCloud: true
+          }),
+        });
+
+        const resData = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 409 && resData.error === 'DOUBLON') {
+            setDuplicateGuest(resData.guest);
+            toast.error(resData.message || 'Vous êtes déjà inscrit');
+            setSharingPlatform(null);
+            return;
+          }
+          throw new Error(resData.error);
+        }
+
+        setCurrentStep(3);
       }
 
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `invitation_${event.name.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+      // Short invitation text with link for other guests
       const shareUrl = window.location.href;
-      const shareText = `Bonjour ! Je viens de générer mon invitation officielle pour "${event.name}". 🎉\n\nGénérez la vôtre ici :\n👉 ${shareUrl}`;
+      const shareText = `🎉 Bonjour ! Je t'invite à l'événement "${event.name}".\n\n👉 Génère ton Pass d'accès officiel avec QR Code ici :\n${shareUrl}`;
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Mon invitation - ${event.name}`,
-          text: shareText
-        });
-        toast.success('Invitation partagée !');
+      if (platform === 'whatsapp') {
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+        window.open(waUrl, '_blank');
+        toast.success('Invitation ouverte sur WhatsApp !');
+      } else if (platform === 'facebook') {
+        const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+        window.open(fbUrl, '_blank', 'width=600,height=500');
+        toast.success('Invitation ouverte sur Facebook !');
       } else {
-        const link = document.createElement('a');
-        link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
-        link.href = dataUrl;
-        link.click();
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(shareText);
+        // platform === 'all'
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `Invitation - ${event.name}`,
+              text: shareText,
+              url: shareUrl,
+            });
+            toast.success('Invitation partagée avec succès !');
+          } catch (e) {
+            if (e.name !== 'AbortError' && navigator.clipboard) {
+              await navigator.clipboard.writeText(shareText);
+              toast.success('Message et lien d\'invitation copiés dans le presse-papier !');
+            }
+          }
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(shareText);
+          toast.success('Message et lien d\'invitation copiés dans le presse-papier !');
         }
-        toast.success("Image téléchargée ! Le lien a été copié dans le presse-papier.");
       }
 
     } catch (error) {
