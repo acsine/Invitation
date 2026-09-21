@@ -4,6 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { FiHeart, FiBriefcase, FiGift, FiShield, FiCheck, FiArrowRight, FiUsers, FiShare2 } from 'react-icons/fi';
 import { BsQrCode } from 'react-icons/bs';
+import AppLink from '@/components/AppLink';
 import ScrollReveal from './ScrollReveal';
 
 export default function EventShowcase() {
@@ -114,13 +115,13 @@ export default function EventShowcase() {
                   </div>
 
                   <div className="pt-4 flex flex-wrap items-center gap-5">
-                    <a 
+                    <AppLink 
                       href="/auth/register" 
                       className="btn-edu-orange px-8 py-4 rounded-xl font-extrabold text-sm flex items-center gap-2.5 shadow-lg shadow-orange-500/25 border-none"
                     >
                       <span>Partager & Créer cet événement</span>
                       <FiArrowRight size={17} />
-                    </a>
+                    </AppLink>
                     <div className="text-xs font-extrabold text-[#3B52E8] flex items-center gap-1.5">
                       <FiUsers size={16} /> {item.stats}
                     </div>

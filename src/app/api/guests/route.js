@@ -7,8 +7,12 @@ export async function POST(request) {
   try {
     const { id, eventId, name, phone, photoUrl, generatedImageUrl, additionalData, saveToCloud } = await request.json();
 
-    if (!eventId || (!name && !photoUrl) || !phone) {
-      return NextResponse.json({ error: 'Champs manquants (Nom, Photo et Téléphone requis)' }, { status: 400 });
+    const trimmedPhone = phone ? String(phone).trim() : '';
+
+    if (!eventId || !name || !trimmedPhone) {
+      return NextResponse.json({ 
+        error: 'Le numéro de téléphone et le nom sont des champs obligatoires.' 
+      }, { status: 400 });
     }
 
     if (!isConfigured) {
@@ -17,7 +21,7 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Fetch event using raw SQL to bypass Prisma Client validation for the new field
+    // Fetch event using raw SQL
     const events = await prisma.$queryRawUnsafe(
       `SELECT "uniquenessField" FROM "Event" WHERE id = $1`,
       eventId
@@ -28,35 +32,33 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Événement non trouvé' }, { status: 404 });
     }
 
-    const uField = event.uniquenessField || 'phone';
-    let existingGuest = null;
-
-    if (uField === 'phone') {
-      existingGuest = await prisma.guest.findUnique({
-        where: {
-          eventId_phone: {
-            eventId,
-            phone
-          }
+    // 1. Check exact phone uniqueness per event
+    let existingGuest = await prisma.guest.findUnique({
+      where: {
+        eventId_phone: {
+          eventId,
+          phone: trimmedPhone
         }
-      });
-    } else {
-      // Check custom field in additionalData (which is stored as String)
-      const parsedNewData = JSON.parse(additionalData || '{}');
-      const newValue = String(parsedNewData[uField] || '').trim().toLowerCase();
+      }
+    });
 
-      if (newValue) {
-        const guests = await prisma.guest.findMany({
-          where: { eventId }
+    // 2. Check normalized phone digits (to catch duplicates with different formatting like +237 vs 69...)
+    if (!existingGuest) {
+      const cleanDigits = trimmedPhone.replace(/[^\d]/g, '');
+      if (cleanDigits.length >= 8) {
+        const allGuests = await prisma.guest.findMany({
+          where: { eventId },
+          select: { id: true, name: true, phone: true, generatedImageUrl: true }
         });
 
-        existingGuest = guests.find(g => {
-          try {
-            const d = JSON.parse(g.additionalData || '{}');
-            return String(d[uField] || '').trim().toLowerCase() === newValue;
-          } catch (e) {
-            return false;
+        existingGuest = allGuests.find(g => {
+          if (!g.phone) return false;
+          const gClean = g.phone.replace(/[^\d]/g, '');
+          if (gClean === cleanDigits) return true;
+          if (gClean.length >= 8 && cleanDigits.length >= 8) {
+            return gClean.slice(-8) === cleanDigits.slice(-8);
           }
+          return false;
         });
       }
     }
@@ -64,7 +66,7 @@ export async function POST(request) {
     if (existingGuest) {
       return NextResponse.json({ 
         error: 'DOUBLON',
-        message: `Une inscription existe déjà avec ce ${uField === 'phone' ? 'numéro de téléphone' : uField}.`,
+        message: 'Ce numéro de téléphone est déjà inscrit à cet événement.',
         guest: {
           id: existingGuest.id,
           name: existingGuest.name,
@@ -75,8 +77,6 @@ export async function POST(request) {
 
     try {
       let finalGeneratedUrl = null;
-      // ...
-      // Only upload to ImageKit if generatedImageUrl is provided AND saveToCloud is not false
       if (generatedImageUrl && saveToCloud !== false) {
         const uploadResponse = await imagekit.upload({
           file: generatedImageUrl,
@@ -86,7 +86,6 @@ export async function POST(request) {
         finalGeneratedUrl = uploadResponse.url;
       }
 
-      // Upload guest photo if provided
       let finalPhotoUrl = null;
       if (photoUrl && photoUrl.startsWith('data:image')) {
         const photoUpload = await imagekit.upload({
@@ -101,8 +100,8 @@ export async function POST(request) {
         data: {
           id: id || uuidv4(),
           eventId,
-          name: name || 'Invité',
-          phone,
+          name: name ? String(name).trim() : 'Invité',
+          phone: trimmedPhone,
           photoUrl: finalPhotoUrl,
           generatedImageUrl: finalGeneratedUrl,
           additionalData: additionalData || '{}',
@@ -111,11 +110,17 @@ export async function POST(request) {
       });
 
       return NextResponse.json(guest, { status: 201 });
-    } catch (uploadError) {
-      console.error('ImageKit upload error:', uploadError);
+    } catch (uploadOrDbError) {
+      if (uploadOrDbError?.code === 'P2002') {
+        return NextResponse.json({
+          error: 'DOUBLON',
+          message: 'Ce numéro de téléphone est déjà inscrit à cet événement.'
+        }, { status: 409 });
+      }
+      console.error('ImageKit upload or DB error:', uploadOrDbError);
       return NextResponse.json({ 
-        error: 'Erreur d\'authentification ImageKit. Vérifiez vos clés dans le fichier .env' 
-      }, { status: 401 });
+        error: 'Erreur lors de la création de l\'invité' 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error('Guest creation error:', error);

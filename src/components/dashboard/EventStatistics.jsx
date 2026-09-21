@@ -172,7 +172,7 @@ export default function EventStatistics({ event, guests }) {
     switch (chartType) {
       case 'pie':
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={400} minWidth={0} minHeight={0}>
             <PieChart>
               <Pie data={chartData} cx="50%" cy="50%" innerRadius={80} outerRadius={140} paddingAngle={5} dataKey="value" stroke="none" label={({ name, value }) => `${name}: ${value}`}>
                 {chartData.map((entry, index) => (
@@ -186,7 +186,7 @@ export default function EventStatistics({ event, guests }) {
         );
       case 'area':
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={400} minWidth={0} minHeight={0}>
             <AreaChart {...commonProps}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -204,7 +204,7 @@ export default function EventStatistics({ event, guests }) {
         );
       case 'line':
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={400} minWidth={0} minHeight={0}>
             <LineChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="#9CA3AF" />
@@ -217,7 +217,7 @@ export default function EventStatistics({ event, guests }) {
       case 'bar':
       default:
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={400} minWidth={0} minHeight={0}>
             <BarChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
               <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="#9CA3AF" />
@@ -348,7 +348,7 @@ export default function EventStatistics({ event, guests }) {
           </div>
           
           <div className="flex-grow flex items-center justify-center min-h-[250px]">
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={250} minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie data={attendanceStats} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
                   <Cell fill="#10B981" />

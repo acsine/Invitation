@@ -1,22 +1,38 @@
-import ImageKit from 'imagekit'
+import ImageKit from 'imagekit';
 
-const isConfigured = 
-  process.env.IMAGEKIT_PUBLIC_KEY && 
-  process.env.IMAGEKIT_PUBLIC_KEY !== 'public_...' &&
-  process.env.IMAGEKIT_PRIVATE_KEY && 
-  process.env.IMAGEKIT_PRIVATE_KEY !== 'private_...' &&
-  process.env.IMAGEKIT_URL_ENDPOINT && 
-  process.env.IMAGEKIT_URL_ENDPOINT !== 'https://ik.imagekit.io/...'
+const publicKey = process.env.IMAGEKIT_PUBLIC_KEY || '';
+const privateKey = process.env.IMAGEKIT_PRIVATE_KEY || '';
+const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT || '';
 
-const imagekit = new ImageKit({
-  publicKey: process.env.IMAGEKIT_PUBLIC_KEY || '',
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY || '',
-  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || '',
-})
+const isConfigured = Boolean(
+  publicKey &&
+  publicKey !== 'public_...' &&
+  privateKey &&
+  privateKey !== 'private_...' &&
+  urlEndpoint &&
+  urlEndpoint !== 'https://ik.imagekit.io/...'
+);
 
-export { isConfigured }
-export default imagekit
+let imagekit = null;
+if (isConfigured) {
+  try {
+    imagekit = new ImageKit({
+      publicKey,
+      privateKey,
+      urlEndpoint,
+    });
+  } catch (err) {
+    console.warn('ImageKit initialization failed:', err.message);
+    imagekit = null;
+  }
+}
+
+export { isConfigured };
+export default imagekit;
 
 export function getImageKitAuthParams() {
-  return imagekit.getAuthenticationParameters()
+  if (!imagekit) {
+    return { token: '', expire: 0, signature: '' };
+  }
+  return imagekit.getAuthenticationParameters();
 }

@@ -7,7 +7,8 @@ import {
   FiCheck, FiZap, FiTarget, FiUsers, FiAward, FiArrowRight, 
   FiPlay, FiStar, FiShield, FiTrendingUp, FiShare2, 
   FiChevronDown, FiCheckCircle, FiClock, FiSmartphone, FiPieChart, 
-  FiPlus, FiPhone, FiGrid, FiLayers, FiHelpCircle, FiCalendar, FiBookOpen, FiSun
+  FiPlus, FiPhone, FiGrid, FiLayers, FiHelpCircle, FiCalendar, FiBookOpen, FiSun,
+  FiMenu, FiX
 } from 'react-icons/fi';
 import { BsQrCode, BsStars, BsLightbulb, BsClock } from 'react-icons/bs';
 
@@ -26,6 +27,8 @@ export default function Home() {
   const [isNavigatingLoader, setIsNavigatingLoader] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     setNavLoading(null);
     const handleScroll = () => {
@@ -36,13 +39,23 @@ export default function Home() {
   }, [pathname]);
 
   const handleNav = (url) => {
-    if (pathname !== url) {
-      if (url === '/auth/login') {
-        setIsNavigatingLoader(true);
-        setTimeout(() => router.push(url), 600);
-      } else {
-        setNavLoading(url);
+    if (!url) return;
+    setMobileMenuOpen(false);
+    
+    if (url.startsWith('#')) {
+      const el = document.querySelector(url);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
       }
+      return;
+    }
+
+    if (pathname !== url) {
+      const loaderMsg = url === '/auth/login' ? 'Vers la connexion...' : 'Vers l\'inscription...';
+      setIsNavigatingLoader(true);
+      setTimeout(() => {
+        router.push(url);
+      }, 400);
     }
   };
 
@@ -69,7 +82,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#F4F6FB] text-slate-800 font-sans overflow-x-hidden selection:bg-[#FF6500] selection:text-white">
       {isNavigatingLoader && <FullPageLoader message="Initialisation de la session..." />}
 
-      {/* --- HEADER CLEAN LIGHT WITH FLOATING GLASS EFFECT & NO ICON BOX --- */}
+      {/* --- HEADER CLEAN LIGHT WITH FLOATING GLASS EFFECT & RESPONSIVE MOBILE MENU --- */}
       <header className={`sticky top-0 w-full z-50 transition-all duration-300 ${
         scrolled 
           ? 'py-3 bg-transparent' 
@@ -81,14 +94,14 @@ export default function Home() {
             : 'h-20 max-w-7xl'
         }`}>
           
-          {/* Logo without [I] box */}
+          {/* Logo */}
           <div className="flex items-center cursor-pointer mr-4 lg:mr-8 flex-shrink-0" onClick={() => router.push('/')}>
             <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 uppercase">
               Invite<span className="text-[#FF6500]">Manager</span>
             </span>
           </div>
 
-          {/* Navigation Links with animated underline effect */}
+          {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-5 xl:gap-7 text-xs xl:text-sm text-slate-700">
             {[
               { href: '#hero', label: 'Accueil' },
@@ -110,7 +123,7 @@ export default function Home() {
           </nav>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <button 
               onClick={() => handleNav('/auth/login')}
               className="hidden sm:inline-flex text-xs sm:text-sm font-extrabold text-slate-700 hover:text-[#3B52E8] transition-colors px-2 py-1.5 whitespace-nowrap"
@@ -119,14 +132,65 @@ export default function Home() {
             </button>
             <button 
               onClick={() => handleNav('/auth/register')}
-              className="bg-[#FF6500] hover:bg-[#e05900] text-white px-4 sm:px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-none border-none outline-none whitespace-nowrap transition-colors"
+              className="bg-[#FF6500] hover:bg-[#e05900] text-white px-3 sm:px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-1.5 shadow-none border-none outline-none whitespace-nowrap transition-colors"
             >
-              <span>Créer mon compte</span>
+              <span className="hidden xs:inline">Créer mon compte</span>
+              <span className="xs:hidden">Inscription</span>
               <FiArrowRight size={16} />
+            </button>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors"
+              aria-label="Toggle Menu"
+            >
+              {mobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
             </button>
           </div>
 
         </div>
+
+        {/* Mobile Dropdown Drawer */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-white border-b border-slate-200 px-6 py-6 space-y-4 shadow-xl animate-in slide-in-from-top-4 duration-300">
+            <nav className="flex flex-col gap-3 font-bold text-sm text-slate-800">
+              {[
+                { href: '#hero', label: 'Accueil' },
+                { href: '#about', label: 'À propos' },
+                { href: '#solutions', label: 'Solutions' },
+                { href: '#badges', label: 'Badges & Pass' },
+                { href: '#services', label: 'Services' },
+                { href: '#tarifs', label: 'Tarifs' },
+              ].map((link, idx) => (
+                <a
+                  key={idx}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="py-2 border-b border-slate-100 hover:text-[#FF6500] transition-colors flex items-center justify-between"
+                >
+                  <span>{link.label}</span>
+                  <span className="text-slate-300 text-xs">→</span>
+                </a>
+              ))}
+            </nav>
+            <div className="pt-2 flex flex-col gap-3">
+              <button
+                onClick={() => handleNav('/auth/login')}
+                className="w-full py-3 rounded-xl bg-slate-100 text-slate-900 font-extrabold text-sm text-center"
+              >
+                Se connecter
+              </button>
+              <button
+                onClick={() => handleNav('/auth/register')}
+                className="w-full py-3 rounded-xl bg-[#FF6500] text-white font-extrabold text-sm text-center shadow-md"
+              >
+                Créer un compte gratuit
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
 
@@ -134,7 +198,7 @@ export default function Home() {
       <section className="relative pt-8 pb-16 md:pt-14 md:pb-24 bg-[#F4F6FB] overflow-hidden" id="hero">
         
         {/* Floating Decorative Background Artifacts */}
-        <div className="absolute top-10 left-8 opacity-10 pointer-events-none text-[#3B52E8] animate-float-slow">
+        <div className="absolute -top-2 left-2 opacity-5 pointer-events-none text-[#3B52E8] animate-float-slow hidden sm:block">
           <FiBookOpen size={56} />
         </div>
         <div className="absolute bottom-10 left-1/3 opacity-10 pointer-events-none text-[#FF6500] animate-float">

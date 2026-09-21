@@ -178,30 +178,30 @@ export default function EventViewSwitcher({ event, guests }) {
       </Modal>
 
       {/* Tabs Switcher & Uniqueness Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 p-1 rounded-2xl w-fit border border-stroke dark:border-white/5">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200/60">
           <button
             onClick={() => setActiveTab('list')}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm",
+              "flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all text-xs cursor-pointer",
               activeTab === 'list' 
-                ? "bg-white dark:bg-dark-2 text-primary shadow-md scale-105" 
-                : "text-body-color hover:text-dark dark:hover:text-white"
+                ? "bg-white text-indigo-600 shadow-sm font-extrabold" 
+                : "text-slate-500 hover:text-slate-900"
             )}
           >
-            <FiList size={18} />
+            <FiList size={16} />
             <span>Liste des Invités</span>
           </button>
           <button
             onClick={() => setActiveTab('stats')}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm",
+              "flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-all text-xs cursor-pointer",
               activeTab === 'stats' 
-                ? "bg-white dark:bg-dark-2 text-primary shadow-md scale-105" 
-                : "text-body-color hover:text-dark dark:hover:text-white"
+                ? "bg-white text-indigo-600 shadow-sm font-extrabold" 
+                : "text-slate-500 hover:text-slate-900"
             )}
           >
-            <FiPieChart size={18} />
+            <FiPieChart size={16} />
             <span>Statistiques & Analyses</span>
           </button>
         </div>
@@ -209,20 +209,20 @@ export default function EventViewSwitcher({ event, guests }) {
         {/* Global Uniqueness Selector & Clean Button */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3 bg-white dark:bg-dark-2 px-4 py-2 rounded-2xl border border-stroke dark:border-white/10 shadow-sm">
-              <div className="flex items-center gap-2">
-                <div className={cn("w-2 h-2 rounded-full", isFormApplied ? "bg-green-500" : "bg-primary animate-pulse")} />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Unicité :</span>
+            <div className="flex items-center gap-2.5 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-1.5">
+                <div className={cn("w-2 h-2 rounded-full", isFormApplied ? "bg-emerald-500" : "bg-indigo-600 animate-pulse")} />
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Unicité :</span>
               </div>
               <select 
                 value={uniquenessField}
                 onChange={(e) => setUniquenessField(e.target.value)}
-                className="bg-transparent text-xs font-bold text-dark dark:text-white outline-none focus:ring-0 cursor-pointer"
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
               >
                 <option value="none">Aucune (Tous les enregistrements)</option>
                 <option value="phone">Téléphone</option>
                 {JSON.parse(event.customFields || '[]').map(field => (
-                  <option key={field.id} value={field.name}>{field.label}</option>
+                  <option key={field.id || field.name} value={field.name}>{field.label || field.name}</option>
                 ))}
               </select>
             </div>

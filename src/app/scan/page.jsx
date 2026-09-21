@@ -5,13 +5,14 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import { 
   FiCamera, FiCheckCircle, FiXCircle, FiRefreshCw, FiUsers, 
   FiClock, FiCalendar, FiChevronLeft, FiLogOut, FiSearch, 
-  FiUserPlus, FiUser, FiPhone, FiPlus, FiCheck, FiActivity, FiZap, FiChevronDown, FiWifiOff, FiWifi, FiEdit3
+  FiUserPlus, FiUser, FiPhone, FiPlus, FiCheck, FiActivity, FiZap, FiChevronDown, FiWifiOff, FiWifi, FiEdit3, FiArrowRight, FiArrowLeft
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import Loader from '@/components/Loader';
 import cn from 'classnames';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import AppLink from '@/components/AppLink';
 
 export default function StandaloneScanner() {
   const { data: session, status } = useSession();
@@ -28,6 +29,12 @@ export default function StandaloneScanner() {
   const [manualSessionKey, setManualSessionKey] = useState(null);
   const [lastScanned, setLastScanned] = useState(null);
   const [isOnline, setIsOnline] = useState(true);
+
+  // Loading States for Buttons
+  const [selectingEventId, setSelectingEventId] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isNavigatingDashboard, setIsNavigatingDashboard] = useState(false);
+  const [validatingGuestId, setValidatingGuestId] = useState(null);
   
   // Tabs & Search
   const [activeTab, setActiveTab] = useState('scanner');
@@ -117,7 +124,10 @@ export default function StandaloneScanner() {
           attendanceMap: JSON.parse(g.attendance || '{}')
         })));
       }
-    } catch (error) { toast.error('Mode hors-ligne activé'); } finally { setLoading(false); }
+    } catch (error) { toast.error('Mode hors-ligne activé'); } finally { 
+      setLoading(false); 
+      setSelectingEventId(null);
+    }
   };
 
   // 3. Configuration Parsers
@@ -180,18 +190,37 @@ export default function StandaloneScanner() {
   const markGuestPresent = (guestId) => {
     const guest = guests.find(g => g.id === guestId);
     if (!guest || !activeSessionKey) {
-      toast.error(guest ? 'Sélectionnez une session' : 'Inconnu');
+      toast.error(guest ? 'Sélectionnez une session' : 'Invité non reconnu');
       return;
     }
     if (guest.attendanceMap[activeSessionKey]) {
       setLastScanned({ id: guestId, name: guest.name, time: Date.now(), status: 'ALREADY_PRESENT' });
+      toast.success(`${guest.name} est déjà présent`);
       return;
     }
+
+    setValidatingGuestId(guestId);
     const updatedGuests = guests.map(g => g.id === guestId ? { ...g, attendanceMap: { ...g.attendanceMap, [activeSessionKey]: true } } : g);
     setGuests(updatedGuests);
     setSyncQueue(prev => [...prev, { guestId, sessionKey: activeSessionKey, timestamp: Date.now() }]);
     setLastScanned({ id: guestId, name: guest.name, time: Date.now(), status: 'SUCCESS' });
-    toast.success(`${guest.name} ✅`);
+    toast.success(`${guest.name} marqué présent !`);
+    setTimeout(() => setValidatingGuestId(null), 800);
+  };
+
+  const handleSelectEvent = (event) => {
+    setSelectingEventId(event.id);
+    setSelectedEvent(event);
+  };
+
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    signOut({ callbackUrl: '/auth/login' });
+  };
+
+  const handleGoDashboard = () => {
+    setIsNavigatingDashboard(true);
+    router.push('/dashboard/events');
   };
 
   // 5. Form Submission
@@ -224,13 +253,13 @@ export default function StandaloneScanner() {
           body: JSON.stringify(payload)
        });
        if (res.ok) {
-          toast.success('Ajouté');
+          toast.success('Invité ajouté');
           setShowAddModal(false);
           setFormData({ name: '', phone: '', additionalData: {} });
           fetchGuests();
        } else {
           const data = await res.json();
-          toast.error(data.error || 'Erreur');
+          toast.error(data.error || 'Erreur lors de l\'enregistrement');
        }
     } catch (error) { toast.error('Erreur réseau'); } finally { setSubmittingGuest(false); }
   };
@@ -253,245 +282,431 @@ export default function StandaloneScanner() {
 
   const filteredGuests = guests.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase()) || (g.phone && g.phone.includes(searchQuery)));
 
-  if (status === 'loading' || (loading && !selectedEvent)) return <div className="flex h-screen items-center justify-center bg-white"><Loader /></div>;
+  if (status === 'loading' || (loading && !selectedEvent)) return <div className="flex h-screen items-center justify-center bg-[#F4F6FB]"><Loader /></div>;
 
-  // --- View 1: Event Selection ---
+  // --- View 1: Event Selection Page ---
   if (!selectedEvent) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 p-6 md:p-12 relative overflow-hidden font-sans">
-        <div className="max-w-2xl mx-auto space-y-16 relative z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-               <div className="w-14 h-14 bg-gradient-to-br from-primary to-blue-600 rounded-[20px] flex items-center justify-center text-white font-black shadow-2xl ring-4 ring-white">I</div>
-               <div>
-                  <h1 className="text-3xl font-black tracking-tighter text-slate-900">Scanner Pro</h1>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] flex items-center gap-2">
-                    <FiUser className="text-primary" /> {session?.user?.name}
-                  </p>
-               </div>
+      <div className="min-h-screen bg-[#F4F6FB] text-slate-800 font-sans selection:bg-[#FF6500] selection:text-white flex flex-col">
+        {/* Brand Header Navbar */}
+        <header className="sticky top-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs py-3 px-4 sm:px-8">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center cursor-pointer" onClick={handleGoDashboard}>
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 uppercase">
+                Invite<span className="text-[#FF6500]">Manager</span>
+              </span>
             </div>
-            <button 
-              onClick={() => signOut({ callbackUrl: '/auth/login' })}
-              className="group w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-white transition-all duration-300 shadow-xl"
-            >
-              <FiLogOut />
-            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200/60 text-xs font-bold text-slate-700">
+                <FiUser className="text-[#FF6500]" size={14} />
+                <span>{session?.user?.name || 'Super Admin'}</span>
+              </div>
+
+              <div className={cn("px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border", 
+                isOnline 
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                  : "bg-rose-50 text-rose-700 border-rose-200"
+              )}>
+                {isOnline ? <FiWifi size={13} /> : <FiWifiOff size={13} />}
+                <span>{isOnline ? 'En ligne' : 'Hors-ligne'}</span>
+              </div>
+
+              <button 
+                disabled={isLoggingOut}
+                onClick={handleLogout}
+                className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition-colors border border-slate-200/60 cursor-pointer disabled:opacity-50"
+                title="Déconnexion"
+              >
+                {isLoggingOut ? <FiRefreshCw className="animate-spin text-rose-600" size={16} /> : <FiLogOut size={16} />}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-5xl mx-auto w-full p-6 sm:p-10 space-y-8">
+          {/* Section Heading */}
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-[#FF6500]/10 text-[#FF6500]">
+              <FiZap size={14} /> Module Scanner Pro
+            </span>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Sélectionnez un Événement
+            </h1>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed">
+              Choisissez un événement pour lancer le contrôle d'accès en direct et valider les présences des invités par scanner QR.
+            </p>
           </div>
 
-          <div className="space-y-8">
-            <div className="flex items-center justify-between px-4">
-              <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">Événements Actifs</h2>
-              <div className={cn("px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-2", isOnline ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100")}>
-                 {isOnline ? <FiWifi /> : <FiWifiOff />} {isOnline ? 'En Ligne' : 'Hors-Ligne'}
-              </div>
-            </div>
-            
-            <div className="grid gap-6">
-              {events.length > 0 ? events.map((event) => (
-                <button
-                  key={event.id}
-                  onClick={() => setSelectedEvent(event)}
-                  className="group relative bg-white hover:bg-slate-50 border border-slate-100 hover:border-primary/30 p-10 rounded-[40px] text-left transition-all duration-500 overflow-hidden shadow-xl hover:shadow-2xl"
-                >
-                  <div className="relative z-10 flex items-center justify-between">
+          {/* Events Grid or Pristine Empty State */}
+          {events.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {events.map((event) => {
+                const isSelected = selectingEventId === event.id;
+                return (
+                  <div
+                    key={event.id}
+                    onClick={() => !selectingEventId && handleSelectEvent(event)}
+                    className={cn(
+                      "group bg-white hover:bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between",
+                      isSelected && "ring-2 ring-[#FF6500] border-transparent"
+                    )}
+                  >
                     <div className="space-y-4">
-                      <h3 className="text-2xl font-black group-hover:text-primary transition-colors tracking-tight text-slate-800">{event.name}</h3>
-                      <div className="flex flex-wrap items-center gap-6 text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                         <span className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100"><FiCalendar className="text-primary" /> {new Date(event.startDate).toLocaleDateString()}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="bg-slate-100 font-mono font-bold text-slate-600 text-xs px-2.5 py-1 rounded-lg border border-slate-200/60">
+                          #{event.shareCode}
+                        </span>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
+                          event.isPaid ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {event.isPaid ? 'Payant' : 'Gratuit'}
+                        </span>
+                      </div>
+
+                      <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-[#FF6500] transition-colors line-clamp-2">
+                        {event.name}
+                      </h3>
+
+                      <div className="flex items-center gap-4 text-xs text-slate-500 font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <FiCalendar size={14} className="text-[#FF6500]" />
+                          <span>{new Date(event.startDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                        <span>•</span>
+                        <div className="flex items-center gap-1.5">
+                          <FiUsers size={14} className="text-indigo-600" />
+                          <span>{event._count?.guests || 0} invités</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-lg ring-1 ring-primary/10">
-                       <FiCamera size={24} />
+
+                    <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-400 group-hover:text-slate-900 transition-colors">
+                        Prêt pour le scan
+                      </span>
+                      <button 
+                        disabled={isSelected}
+                        className="px-4 py-2.5 rounded-xl bg-[#0B1736] group-hover:bg-[#FF6500] text-white font-bold text-xs flex items-center gap-2 transition-all shadow-sm disabled:opacity-80 cursor-pointer"
+                      >
+                        {isSelected ? (
+                          <>
+                            <FiRefreshCw className="animate-spin text-white" size={14} />
+                            <span>Chargement...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Lancer le Scanner</span>
+                            <FiArrowRight size={14} />
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                </button>
-              )) : (
-                <div className="py-24 text-center bg-white rounded-[48px] border-2 border-dashed border-slate-100">
-                   <FiActivity size={48} className="text-slate-100 mx-auto mb-6" />
-                   <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Aucun événement disponible</p>
-                </div>
-              )}
+                );
+              })}
             </div>
-          </div>
-        </div>
+          ) : (
+            /* EMPTY STATE WITH SPINNER ACTION BUTTON */
+            <div className="bg-white rounded-3xl border border-slate-200/80 p-10 sm:p-16 text-center shadow-sm max-w-xl mx-auto space-y-6">
+              <div className="w-16 h-16 bg-[#FF6500]/10 text-[#FF6500] rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                <FiCamera size={36} />
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-extrabold text-slate-900">
+                  Aucun Événement Disponible
+                </h3>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed max-w-md mx-auto">
+                  Vous n'avez actuellement aucun événement actif prêt pour le scanner. Créez votre premier événement dans le tableau de bord pour démarrer.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  disabled={isNavigatingDashboard}
+                  onClick={handleGoDashboard}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#0B1736] hover:bg-[#FF6500] text-white font-extrabold text-xs uppercase tracking-wider transition-all shadow-md cursor-pointer disabled:opacity-80"
+                >
+                  {isNavigatingDashboard ? (
+                    <>
+                      <FiRefreshCw className="animate-spin" size={15} />
+                      <span>Redirection...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiArrowLeft size={16} />
+                      <span>Aller à mes événements</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
       </div>
     );
   }
 
-  // --- View 2: Scanner UI ---
+  // --- View 2: Active Event Scanner View ---
   return (
-    <div className="min-h-screen bg-white text-slate-900 flex flex-col font-sans">
-      {/* Header */}
-      <div className="px-6 py-8 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-2xl sticky top-0 z-[100] shadow-sm">
-         <button onClick={() => setSelectedEvent(null)} className="flex items-center gap-3 text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] hover:text-slate-900 transition-all">
-           <FiChevronLeft size={16} /> Retour
-         </button>
-         <div className="text-right">
-            <div className={cn("px-3 py-1 rounded-full font-black uppercase tracking-[0.3em] text-[8px] flex items-center gap-2 border inline-flex", isOnline ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100")}>
-               {isOnline ? 'Connecté' : 'Hors-Ligne'}
-            </div>
-            <div className="text-sm font-black tracking-tight text-slate-800 mt-1">{selectedEvent.name}</div>
-         </div>
-      </div>
+    <div className="min-h-screen bg-[#F4F6FB] text-slate-800 font-sans flex flex-col">
+      {/* Header Bar */}
+      <div className="px-6 py-4 border-b border-slate-200/80 bg-white sticky top-0 z-[100] shadow-sm flex items-center justify-between">
+        <button 
+          onClick={() => setSelectedEvent(null)} 
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-bold text-xs transition-all cursor-pointer"
+        >
+          <FiChevronLeft size={18} /> <span>Retour aux événements</span>
+        </button>
 
-      <div className="flex-1 p-6 flex flex-col max-w-lg mx-auto w-full gap-8 relative z-10">
-        {/* Session Selector */}
-        <div className="relative">
-           <select value={activeSessionKey || ''} onChange={(e) => setManualSessionKey(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-[28px] py-5 pl-16 pr-12 text-xs font-black uppercase tracking-[0.2em] appearance-none focus:ring-4 focus:ring-primary/5 transition-all text-slate-700 shadow-sm">
-              {availableSessions.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-           </select>
-           <FiClock className="absolute left-6 top-1/2 -translate-y-1/2 text-primary" />
-           <FiChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="text-center">
+          <h3 className="text-base font-extrabold text-slate-900">{selectedEvent.name}</h3>
+          <span className="text-[11px] text-slate-500 font-semibold">
+            Code: #{selectedEvent.shareCode}
+          </span>
         </div>
 
-        {/* Tabs */}
-        <div className="flex p-1.5 bg-slate-50 rounded-[24px] border border-slate-100 shadow-inner">
-           <button onClick={() => setActiveTab('scanner')} className={cn("flex-1 py-4 rounded-[18px] font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500", activeTab === 'scanner' ? "bg-white text-primary shadow-lg" : "text-slate-400")}>Scanner</button>
-           <button onClick={() => setActiveTab('manual')} className={cn("flex-1 py-4 rounded-[18px] font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500", activeTab === 'manual' ? "bg-white text-primary shadow-lg" : "text-slate-400")}>Recherche</button>
+        <div className={cn("px-3 py-1 rounded-full font-bold text-xs flex items-center gap-1.5 border", 
+          isOnline ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+        )}>
+          {isOnline ? <FiWifi size={13} /> : <FiWifiOff size={13} />}
+          <span>{isOnline ? 'En ligne' : 'Hors-ligne'}</span>
+        </div>
+      </div>
+
+      <div className="flex-1 p-6 flex flex-col max-w-md mx-auto w-full gap-6">
+        {/* Session Selector */}
+        <div className="relative">
+          <select 
+            value={activeSessionKey || ''} 
+            onChange={(e) => setManualSessionKey(e.target.value)} 
+            className="w-full bg-white border border-slate-200 rounded-2xl py-3.5 pl-12 pr-10 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm cursor-pointer"
+          >
+            {availableSessions.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+          </select>
+          <FiClock className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-600" size={16} />
+          <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex p-1 bg-slate-200/80 rounded-2xl border border-slate-200/60">
+          <button 
+            onClick={() => setActiveTab('scanner')} 
+            className={cn("flex-1 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer", 
+              activeTab === 'scanner' ? "bg-white text-indigo-600 shadow-sm font-extrabold" : "text-slate-600 hover:text-slate-900"
+            )}
+          >
+            Camera Scanner
+          </button>
+          <button 
+            onClick={() => setActiveTab('manual')} 
+            className={cn("flex-1 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer", 
+              activeTab === 'manual' ? "bg-white text-indigo-600 shadow-sm font-extrabold" : "text-slate-600 hover:text-slate-900"
+            )}
+          >
+            Recherche Manuelle
+          </button>
         </div>
 
         {activeTab === 'scanner' ? (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl flex items-center justify-between">
-               <div className="space-y-1">
-                 <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em]">Session active</p>
-                 <h3 className="text-3xl font-black text-slate-800">{currentSession?.name || '---'}</h3>
-               </div>
-               <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center border border-slate-100 text-xl font-black">J{currentSession?.day || '-'}</div>
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-wider">Session Active</p>
+                <h4 className="text-xl font-extrabold text-slate-900">{currentSession?.name || 'Session 1'}</h4>
+              </div>
+              <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black text-lg border border-indigo-100">
+                J{currentSession?.day || 1}
+              </div>
             </div>
-            <div className="relative aspect-square">
-               <div className="absolute -inset-4 border-primary/30 border-2 rounded-[60px] pointer-events-none opacity-50" />
-               <div className="relative bg-slate-100 rounded-[48px] overflow-hidden border-4 border-white shadow-2xl w-full h-full">
-                 <div id="reader-standalone" className="w-full h-full"></div>
-                 {activeTab === 'scanner' && <div className="absolute inset-x-0 h-1 bg-primary/50 shadow-[0_0_15px_rgba(68,55,255,0.5)] animate-scan-line z-10" />}
-                 {lastScanned && Date.now() - lastScanned.time < 2000 && (
-                   <div className={cn("absolute inset-0 flex flex-col items-center justify-center backdrop-blur-md animate-in fade-in duration-300 z-50", lastScanned.status === 'SUCCESS' ? "bg-green-50/60" : "bg-red-50/60")}>
-                      <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-6 shadow-2xl border-4 border-white text-white", lastScanned.status === 'SUCCESS' ? "bg-green-500" : "bg-red-500")}>
-                         {lastScanned.status === 'SUCCESS' ? <FiCheck size={40} /> : <FiXCircle size={40} />}
-                      </div>
-                      <div className="text-2xl font-black text-slate-800 text-center px-10">{lastScanned.name || 'Inconnu'}</div>
-                   </div>
-                 )}
-               </div>
+
+            {/* Scanner Viewport Box */}
+            <div className="relative aspect-square bg-slate-900 rounded-3xl overflow-hidden border-4 border-slate-800 shadow-xl">
+              <div id="reader-standalone" className="w-full h-full"></div>
+              {lastScanned && Date.now() - lastScanned.time < 2000 && (
+                <div className={cn("absolute inset-0 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md animate-in fade-in duration-200 z-50", 
+                  lastScanned.status === 'SUCCESS' ? "bg-emerald-600/90 text-white" : "bg-rose-600/90 text-white"
+                )}>
+                  {lastScanned.status === 'SUCCESS' ? <FiCheckCircle size={56} className="mb-2 animate-bounce" /> : <FiXCircle size={56} className="mb-2 animate-shake" />}
+                  <h4 className="text-xl font-black">{lastScanned.name || 'Inconnu'}</h4>
+                  <p className="text-xs font-bold uppercase tracking-wider mt-1">
+                    {lastScanned.status === 'SUCCESS' ? 'PRÉSENT !' : (lastScanned.status === 'ALREADY_PRESENT' ? 'DÉJÀ MARQUÉ PRÉSENT' : 'INVITÉ NON TROUVÉ')}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ) : (
-          <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
-             <div className="relative">
-                <FiSearch className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-300 text-xl" />
-                <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-[32px] py-7 pl-18 pr-8 text-base font-bold shadow-sm" />
-             </div>
-             <div className="space-y-4 max-h-[45vh] overflow-y-auto custom-scrollbar pr-3">
-                {filteredGuests.map(guest => {
-                   const isPresent = guest.attendanceMap[activeSessionKey];
-                   return (
-                     <div key={guest.id} className="bg-white border border-slate-100 p-6 rounded-[32px] flex items-center justify-between shadow-sm">
-                        <div className="flex items-center gap-5">
-                           <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-300 overflow-hidden relative">
-                              {guest.photoUrl ? <img src={guest.photoUrl} className="w-full h-full object-cover" /> : <FiUser size={24} />}
-                              {isPresent && <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center"><FiCheck className="text-green-600" /></div>}
-                           </div>
-                           <div><h4 className="text-base font-black text-slate-800">{guest.name}</h4><p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{guest.phone || '-'}</p></div>
-                        </div>
-                        <button disabled={isPresent} onClick={() => markGuestPresent(guest.id)} className={cn("w-12 h-12 rounded-[20px] flex items-center justify-center shadow-lg transition-all", isPresent ? "bg-green-50 text-green-500" : "bg-primary text-white active:scale-95")}>
-                           {isPresent ? <FiCheck /> : <FiUserPlus />}
-                        </button>
-                     </div>
-                   );
-                })}
-             </div>
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <div className="relative">
+              <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Rechercher un invité..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-11 pr-4 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500/20" 
+              />
+            </div>
+            
+            <div className="space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">
+              {filteredGuests.map(guest => {
+                const isPresent = guest.attendanceMap[activeSessionKey];
+                const isValidating = validatingGuestId === guest.id;
+                return (
+                  <div key={guest.id} className="bg-white border border-slate-200/80 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold overflow-hidden border">
+                        {guest.photoUrl ? <img src={guest.photoUrl} alt="" className="w-full h-full object-cover" /> : <span>{guest.name.charAt(0)}</span>}
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-900">{guest.name}</h5>
+                        <p className="text-[10px] text-slate-500">{guest.phone || '-'}</p>
+                      </div>
+                    </div>
+                    <button 
+                      disabled={isPresent || isValidating} 
+                      onClick={() => markGuestPresent(guest.id)} 
+                      className={cn("px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-70", 
+                        isPresent ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                      )}
+                    >
+                      {isValidating ? (
+                        <>
+                          <FiRefreshCw className="animate-spin" size={13} />
+                          <span>Validation...</span>
+                        </>
+                      ) : isPresent ? (
+                        <>
+                          <FiCheck size={14} />
+                          <span>Présent</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiUserPlus size={14} />
+                          <span>Valider</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        {/* Floating Action Button for Add */}
-        <div className="grid grid-cols-2 gap-5 mt-auto pb-6">
-           <div className="bg-white rounded-[32px] p-7 border border-slate-100 shadow-xl">
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-3">Présents</p>
-              <div className="flex items-baseline gap-3"><span className="text-4xl font-black text-slate-800">{guests.filter(g => g.attendanceMap[activeSessionKey]).length}</span><span className="text-xs text-slate-400 font-black tracking-widest">/ {guests.length}</span></div>
-           </div>
-           <button onClick={() => setShowAddModal(true)} className="bg-primary rounded-[32px] p-7 text-white shadow-xl shadow-primary/20 flex flex-col items-center justify-center active:scale-95 transition-all">
-              <FiPlus size={24} className="mb-2" />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Nouvel Invité</p>
-           </button>
+        {/* Counter Summary */}
+        <div className="grid grid-cols-2 gap-3 mt-auto">
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm text-center">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Présents</span>
+            <span className="text-2xl font-black text-emerald-600">{guests.filter(g => g.attendanceMap[activeSessionKey]).length}</span>
+            <span className="text-xs font-bold text-slate-400"> / {guests.length}</span>
+          </div>
+
+          <button 
+            onClick={() => setShowAddModal(true)} 
+            className="bg-[#0B1736] hover:bg-[#FF6500] rounded-2xl p-4 text-white shadow-md flex flex-col items-center justify-center transition-colors cursor-pointer"
+          >
+            <FiPlus size={20} className="mb-1" />
+            <span className="text-[11px] font-extrabold uppercase tracking-wider">Nouvel Invité</span>
+          </button>
         </div>
       </div>
 
-      {/* Sync Status Overlay */}
-      {(syncQueue.length > 0 || isSyncing) && (
-         <div className="fixed bottom-8 right-8 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 z-[150] border bg-white border-slate-100 text-primary">
-            <FiRefreshCw className={isSyncing ? "animate-spin" : ""} />
-            <div className="flex flex-col text-[10px] font-black uppercase tracking-widest"><span>{isOnline ? 'Synchro' : 'Attente'}</span><span className="text-slate-400">{syncQueue.length} restants</span></div>
-         </div>
-      )}
-
-      {/* Dynamic Add Guest Modal */}
+      {/* Enrolment Modal */}
       {showAddModal && (
-         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/60 backdrop-blur-md">
-            <div className="bg-white w-full max-w-lg p-10 rounded-t-[50px] sm:rounded-[50px] border border-slate-100 shadow-2xl animate-in slide-in-from-bottom-full duration-500 overflow-y-auto max-h-[90vh]">
-               <div className="flex justify-between items-center mb-8">
-                  <div><h3 className="text-3xl font-black text-slate-800">Enrôlement</h3><p className="text-[10px] text-primary font-black uppercase tracking-[0.3em]">Configuration de l'événement</p></div>
-                  <button onClick={() => setShowAddModal(false)} className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400"><FiXCircle size={24} /></button>
-               </div>
-
-               <form onSubmit={handleAddGuest} className="space-y-6">
-                  {/* Fixed Core Fields */}
-                  <div className="relative">
-                    <FiUser className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" />
-                    <input required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Nom complet" className="w-full bg-slate-50 border border-slate-100 rounded-[28px] py-6 pl-14 pr-8 font-bold text-slate-800" />
-                  </div>
-                  <div className="relative">
-                    <FiPhone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" />
-                    <input required value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Téléphone" className="w-full bg-slate-50 border border-slate-100 rounded-[28px] py-6 pl-14 pr-8 font-bold text-slate-800" />
-                  </div>
-
-                  {/* Dynamic Fields from JSON */}
-                  {eventCustomFields.map(field => (
-                    <div key={field.id} className="relative">
-                       <FiEdit3 className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" />
-                       {field.type === 'select' ? (
-                          <div className="relative">
-                             <select 
-                               value={formData.additionalData[field.name] || ''}
-                               onChange={(e) => setFormData({...formData, additionalData: {...formData.additionalData, [field.name]: e.target.value}})}
-                               className="w-full bg-slate-50 border border-slate-100 rounded-[28px] py-6 pl-14 pr-12 font-bold text-slate-800 appearance-none"
-                             >
-                                <option value="">{field.label}</option>
-                                {(field.options || '').split(',').map(opt => <option key={opt} value={opt.trim()}>{opt.trim()}</option>)}
-                             </select>
-                             <FiChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                          </div>
-                       ) : field.type === 'checkbox' ? (
-                          <div className="w-full bg-slate-50 border border-slate-100 rounded-[28px] py-6 pl-14 pr-8 flex items-center justify-between">
-                             <span className="font-bold text-slate-500">{field.label}</span>
-                             <input type="checkbox" checked={!!formData.additionalData[field.name]} onChange={(e) => setFormData({...formData, additionalData: {...formData.additionalData, [field.name]: e.target.checked}})} className="w-6 h-6 rounded-lg text-primary border-slate-200" />
-                          </div>
-                       ) : (
-                          <input 
-                             type={field.type === 'number' ? 'number' : 'text'}
-                             value={formData.additionalData[field.name] || ''}
-                             onChange={(e) => setFormData({...formData, additionalData: {...formData.additionalData, [field.name]: e.target.value}})}
-                             placeholder={field.label}
-                             className="w-full bg-slate-50 border border-slate-100 rounded-[28px] py-6 pl-14 pr-8 font-bold text-slate-800"
-                          />
-                       )}
-                    </div>
-                  ))}
-
-                  <button type="submit" disabled={submittingGuest} className="w-full bg-primary py-7 rounded-[32px] text-white font-black uppercase tracking-[0.3em] shadow-xl flex items-center justify-center gap-3">
-                     {submittingGuest ? <FiRefreshCw className="animate-spin" /> : <FiCheckCircle />}
-                     <span>Confirmer</span>
-                  </button>
-               </form>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl space-y-6 overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-900">Enrôlement d'Invité</h3>
+                <p className="text-xs text-slate-500 font-medium">Ajouter un participant en direct sur l'événement</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-xl text-slate-400 hover:text-slate-800 bg-slate-100">
+                <FiXCircle size={20} />
+              </button>
             </div>
-         </div>
-      )}
 
-      <style jsx global>{`
-         @keyframes scan-line { 0% { top: 0; } 100% { top: 100%; } }
-         .animate-scan-line { animation: scan-line 3s linear infinite; }
-         .pl-14 { padding-left: 3.5rem; }
-         .pl-18 { padding-left: 4.5rem; }
-      `}</style>
+            <form onSubmit={handleAddGuest} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nom complet *</label>
+                <input 
+                  required 
+                  value={formData.name} 
+                  onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                  placeholder="Ex: Jean Dupont" 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Téléphone *</label>
+                <input 
+                  required 
+                  value={formData.phone} 
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})} 
+                  placeholder="Ex: +225 07 00 00 00" 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                />
+              </div>
+
+              {eventCustomFields.map(field => (
+                <div key={field.id || field.name}>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">{field.label || field.name}</label>
+                  {field.type === 'select' ? (
+                    <select 
+                      value={formData.additionalData[field.name] || ''}
+                      onChange={(e) => setFormData({...formData, additionalData: {...formData.additionalData, [field.name]: e.target.value}})}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none cursor-pointer"
+                    >
+                      <option value="">Sélectionner...</option>
+                      {(field.options || '').split(',').map(opt => <option key={opt} value={opt.trim()}>{opt.trim()}</option>)}
+                    </select>
+                  ) : field.type === 'checkbox' ? (
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={!!formData.additionalData[field.name]} 
+                        onChange={(e) => setFormData({...formData, additionalData: {...formData.additionalData, [field.name]: e.target.checked}})} 
+                        className="w-4 h-4 rounded text-indigo-600 border-slate-300 cursor-pointer" 
+                      />
+                      <span className="text-xs text-slate-600">{field.label}</span>
+                    </div>
+                  ) : (
+                    <input 
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      value={formData.additionalData[field.name] || ''}
+                      onChange={(e) => setFormData({...formData, additionalData: {...formData.additionalData, [field.name]: e.target.value}})}
+                      placeholder={field.label}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-medium outline-none"
+                    />
+                  )}
+                </div>
+              ))}
+
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all"
+                >
+                  Annuler
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submittingGuest}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-70"
+                >
+                  {submittingGuest ? <FiRefreshCw className="animate-spin" size={15} /> : <FiCheckCircle size={15} />}
+                  <span>{submittingGuest ? 'Enregistrement...' : 'Confirmer'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

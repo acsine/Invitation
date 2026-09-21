@@ -11,7 +11,6 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Valeur manquante' }, { status: 400 });
     }
 
-    // Fetch event using raw SQL as a backup for client sync issues
     const events = await prisma.$queryRawUnsafe(
       `SELECT id, "uniquenessField" FROM "Event" WHERE "shareCode" = $1`,
       shareCode
@@ -22,32 +21,33 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Événement non trouvé' }, { status: 404 });
     }
 
-    const uField = event.uniquenessField || 'phone';
-    let existingGuest = null;
+    const trimmedValue = String(value).trim();
 
-    if (uField === 'phone') {
-      existingGuest = await prisma.guest.findUnique({
-        where: {
-          eventId_phone: {
-            eventId: event.id,
-            phone: value
-          }
+    // 1. Exact match by eventId_phone
+    let existingGuest = await prisma.guest.findUnique({
+      where: {
+        eventId_phone: {
+          eventId: event.id,
+          phone: trimmedValue
         }
-      });
-    } else {
-      // Check custom field
-      const guests = await prisma.guest.findMany({
-        where: { eventId: event.id }
-      });
+      }
+    });
 
-      existingGuest = guests.find(g => {
-        try {
-          const d = JSON.parse(g.additionalData || '{}');
-          return String(d[uField] || '').trim().toLowerCase() === String(value).trim().toLowerCase();
-        } catch (e) {
-          return false;
-        }
-      });
+    // 2. Normalized digits match
+    if (!existingGuest) {
+      const cleanVal = trimmedValue.replace(/[^\d]/g, '');
+      if (cleanVal.length >= 8) {
+        const guests = await prisma.guest.findMany({
+          where: { eventId: event.id },
+          select: { id: true, name: true, phone: true, generatedImageUrl: true }
+        });
+
+        existingGuest = guests.find(g => {
+          if (!g.phone) return false;
+          const gClean = g.phone.replace(/[^\d]/g, '');
+          return gClean === cleanVal || (gClean.length >= 8 && gClean.slice(-8) === cleanVal.slice(-8));
+        });
+      }
     }
 
     return NextResponse.json({

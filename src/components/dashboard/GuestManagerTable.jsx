@@ -1,42 +1,161 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import cn from 'classnames';
-import { FiUsers, FiCheckCircle, FiClock, FiDownload, FiFileText, FiCamera } from 'react-icons/fi';
+import { 
+  FiUsers, 
+  FiCheckCircle, 
+  FiClock, 
+  FiDownload, 
+  FiFileText, 
+  FiCamera, 
+  FiPrinter, 
+  FiSearch, 
+  FiUpload, 
+  FiFilter, 
+  FiPlus, 
+  FiRefreshCw, 
+  FiTrash2,
+  FiX
+} from 'react-icons/fi';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import AppLink from '@/components/AppLink';
-import { FiPrinter } from 'react-icons/fi';
+import ExcelImportModal from './ExcelImportModal';
+import LiveQRScannerModal from './LiveQRScannerModal';
+import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
-const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
+const GuestManagerTable = ({ event, guests: initialGuests = [], allGuestsCount }) => {
+  const router = useRouter();
+  const [guests, setGuests] = useState(initialGuests);
+
+  // Sync state if props change
+  React.useEffect(() => {
+    setGuests(initialGuests);
+  }, [initialGuests]);
+
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [isExportingXML, setIsExportingXML] = useState(false);
   const [selectedSession, setSelectedSession] = useState('d1s1');
-  
   const [pdfDaysPerPage, setPdfDaysPerPage] = useState(4);
-  const customFieldsConfig = JSON.parse(event.customFields || '[]');
+
+  // Modals state
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTargetField, setSearchTargetField] = useState('ALL'); // 'ALL', 'name', 'phone', or custom field key
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'PAID', 'PENDING'
+
+  const customFieldsConfig = useMemo(() => {
+    try {
+      if (typeof event.customFields === 'string') {
+        return JSON.parse(event.customFields || '[]');
+      }
+      return Array.isArray(event.customFields) ? event.customFields : [];
+    } catch (e) {
+      return [];
+    }
+  }, [event.customFields]);
+
   const attendanceDays = event.attendanceDays || 1;
   const sessionsPerDay = event.sessionsPerDay || 1;
 
   // Prepare available sessions
-  const availableSessions = [];
-  for (let d = 1; d <= attendanceDays; d++) {
-    for (let s = 1; s <= sessionsPerDay; s++) {
-      availableSessions.push({ id: `d${d}s${s}`, label: `J${d}-S${s}` });
+  const availableSessions = useMemo(() => {
+    const list = [];
+    for (let d = 1; d <= attendanceDays; d++) {
+      for (let s = 1; s <= sessionsPerDay; s++) {
+        list.push({ id: `d${d}s${s}`, label: `J${d}-S${s}` });
+      }
     }
-  }
+    return list;
+  }, [attendanceDays, sessionsPerDay]);
+
+  // Advanced Filtering Logic across Custom Fields & Metadata
+  const filteredGuests = useMemo(() => {
+    return guests.filter(guest => {
+      // 1. Status Filter
+      if (statusFilter !== 'ALL' && guest.status !== statusFilter) {
+        return false;
+      }
+
+      // 2. Search Query Filter
+      if (!searchQuery.trim()) return true;
+
+      const query = searchQuery.toLowerCase().trim();
+      const additionalData = typeof guest.additionalData === 'string' 
+        ? JSON.parse(guest.additionalData || '{}') 
+        : (guest.additionalData || {});
+
+      if (searchTargetField === 'ALL') {
+        // Search across Name, Phone, and all custom fields
+        const matchName = guest.name && guest.name.toLowerCase().includes(query);
+        const matchPhone = guest.phone && guest.phone.toLowerCase().includes(query);
+        const matchCustom = Object.values(additionalData).some(val => 
+          val && String(val).toLowerCase().includes(query)
+        );
+
+        return matchName || matchPhone || matchCustom;
+      } else if (searchTargetField === 'name') {
+        return guest.name && guest.name.toLowerCase().includes(query);
+      } else if (searchTargetField === 'phone') {
+        return guest.phone && guest.phone.toLowerCase().includes(query);
+      } else {
+        // Target a specific custom field key
+        const val = additionalData[searchTargetField];
+        return val && String(val).toLowerCase().includes(query);
+      }
+    });
+  }, [guests, searchQuery, searchTargetField, statusFilter]);
+
+  // Attendance update callback from Scanner or manual toggle
+  const handleAttendanceMarked = (guestId, sessionKey) => {
+    setGuests(prev => prev.map(g => {
+      if (g.id === guestId) {
+        const currentAttendance = JSON.parse(g.attendance || '{}');
+        const updated = { ...currentAttendance, [sessionKey]: true };
+        return { ...g, attendance: JSON.stringify(updated) };
+      }
+      return g;
+    }));
+    router.refresh();
+  };
+
+  // Toggle Attendance Checkbox
+  const toggleAttendance = async (guestId, sessionKey, currentVal) => {
+    const newVal = !currentVal;
+    
+    // Optimistic UI update
+    setGuests(prev => prev.map(g => {
+      if (g.id === guestId) {
+        const currentAttendance = JSON.parse(g.attendance || '{}');
+        const updated = { ...currentAttendance, [sessionKey]: newVal };
+        return { ...g, attendance: JSON.stringify(updated) };
+      }
+      return g;
+    }));
+
+    try {
+      await fetch(`/api/events/${event.id}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestId, sessionKey, val: newVal })
+      });
+    } catch (err) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
 
   const exportPDF = async () => {
     setIsExportingPDF(true);
     setTimeout(() => {
       try {
-        const sessionsPerDay = event.sessionsPerDay || 1;
-        const totalDays = event.attendanceDays || 1;
         const daysPerPageSetting = parseInt(pdfDaysPerPage) || 4;
-        
-        // Calculate total columns on a page
         const attendanceCols = daysPerPageSetting * sessionsPerDay;
-        const totalCols = customFieldsConfig.length + attendanceCols + 1; // +1 for Guest Name
+        const totalCols = customFieldsConfig.length + attendanceCols + 1;
         const orientation = totalCols > 8 ? 'l' : 'p';
 
         const doc = new jsPDF(orientation, 'mm', 'a4'); 
@@ -44,30 +163,23 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
         const pageWidth = doc.internal.pageSize.width;
         const pageHeight = doc.internal.pageSize.height;
         
-        const totalPageGroups = Math.ceil(totalDays / daysPerPageSetting);
+        const totalPageGroups = Math.ceil(attendanceDays / daysPerPageSetting);
 
         for (let groupIdx = 0; groupIdx < totalPageGroups; groupIdx++) {
           if (groupIdx > 0) doc.addPage();
 
           const startDay = groupIdx * daysPerPageSetting + 1;
-          const endDay = Math.min(startDay + daysPerPageSetting - 1, totalDays);
+          const endDay = Math.min(startDay + daysPerPageSetting - 1, attendanceDays);
 
-          // Header setup
-          doc.setFontSize(22);
-          doc.setTextColor(40);
-          doc.text(`Liste des Invites de ${event.name}`, pageWidth / 2, 22, { align: 'center' });
+          doc.setFontSize(20);
+          doc.setTextColor(30);
+          doc.text(`Liste des Invités : ${event.name}`, pageWidth / 2, 20, { align: 'center' });
           
-          doc.setFontSize(10);
+          doc.setFontSize(9);
           doc.setTextColor(100);
-          doc.text(`Periode : Jours ${startDay} a ${endDay} - Genere le : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 30, { align: 'center' });
-          
-          doc.setFontSize(11);
-          doc.setTextColor(80);
-          const description = "Liste des participants et suivi de presence (Check = Present).";
-          doc.text(description, pageWidth / 2, 40, { align: 'center' });
+          doc.text(`Période : Jours ${startDay} à ${endDay} - Généré le : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth / 2, 27, { align: 'center' });
 
-          // Headers
-          const headers = ['Invite'];
+          const headers = ['Invité', 'Téléphone'];
           customFieldsConfig.forEach(field => headers.push(field.label));
           
           for (let d = startDay; d <= endDay; d++) {
@@ -76,10 +188,10 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
             }
           }
 
-          const tableData = guests.map(guest => {
+          const tableData = filteredGuests.map(guest => {
             const additionalData = JSON.parse(guest.additionalData || '{}');
             const attendanceMap = JSON.parse(guest.attendance || '{}');
-            const row = [guest.name];
+            const row = [guest.name, guest.phone || '-'];
             
             customFieldsConfig.forEach(field => {
               const val = additionalData[field.name];
@@ -89,7 +201,7 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
             for (let d = startDay; d <= endDay; d++) {
               for (let s = 1; s <= sessionsPerDay; s++) {
                 const key = `d${d}s${s}`;
-                row.push(attendanceMap[key] ? 'YES' : '');
+                row.push(attendanceMap[key] ? 'OUI' : '-');
               }
             }
             return row;
@@ -98,59 +210,53 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
           autoTable(doc, {
             head: [headers],
             body: tableData,
-            startY: 48,
+            startY: 35,
             theme: 'grid',
-            styles: { fontSize: orientation === 'p' ? 7 : 8, cellPadding: 3, halign: 'center', valign: 'middle' },
-            headStyles: { fillColor: [31, 41, 55], textColor: 255, fontStyle: 'bold', fontSize: orientation === 'p' ? 8 : 9 },
-            alternateRowStyles: { fillColor: [249, 250, 251] },
+            styles: { fontSize: orientation === 'p' ? 7 : 8, cellPadding: 2.5, halign: 'center', valign: 'middle' },
+            headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [248, 250, 252] },
             columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
             didDrawPage: (data) => {
               let str = 'Page ' + doc.internal.getNumberOfPages();
               if (typeof doc.putTotalPages === 'function') str = str + ' sur ' + totalPagesExp;
-              doc.setFontSize(10);
+              doc.setFontSize(9);
               doc.text(str, data.settings.margin.left, pageHeight - 10);
             }
           });
         }
 
         if (typeof doc.putTotalPages === 'function') doc.putTotalPages(totalPagesExp);
-        doc.save(`rapport_final_${event.name.replace(/\s+/g, '_')}.pdf`);
+        doc.save(`invites_${event.name.replace(/\s+/g, '_')}.pdf`);
       } catch (err) {
         console.error(err);
       } finally {
         setIsExportingPDF(false);
       }
-    }, 500);
+    }, 400);
   };
 
   const exportXML = () => {
     setIsExportingXML(true);
-    
     setTimeout(() => {
       try {
-        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-        xml += '<event>\n';
-        xml += `  <id>${event.id}</id>\n`;
-        xml += `  <name>${escapeXml(event.name)}</name>\n`;
-        xml += '  <guests>\n';
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<event>\n';
+        xml += `  <id>${event.id}</id>\n  <name>${escapeXml(event.name)}</name>\n  <guests>\n`;
 
-        guests.forEach(guest => {
+        filteredGuests.forEach(guest => {
           const additionalData = JSON.parse(guest.additionalData || '{}');
           xml += '    <guest>\n';
           xml += `      <id>${guest.id}</id>\n`;
           xml += `      <name>${escapeXml(guest.name)}</name>\n`;
+          xml += `      <phone>${escapeXml(guest.phone || '')}</phone>\n`;
           xml += `      <status>${guest.status}</status>\n`;
-          xml += `      <photo>${escapeXml(guest.photoUrl || '')}</photo>\n`;
-          xml += '      <additional_data>\n';
+          xml += '      <custom_fields>\n';
           Object.entries(additionalData).forEach(([key, value]) => {
             xml += `        <field name="${escapeXml(key)}">${escapeXml(String(value))}</field>\n`;
           });
-          xml += '      </additional_data>\n';
-          xml += '    </guest>\n';
+          xml += '      </custom_fields>\n    </guest>\n';
         });
 
-        xml += '  </guests>\n';
-        xml += '</event>';
+        xml += '  </guests>\n</event>';
 
         const blob = new Blob([xml], { type: 'application/xml' });
         const url = URL.createObjectURL(blob);
@@ -164,156 +270,220 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
       } finally {
         setIsExportingXML(false);
       }
-    }, 500);
+    }, 300);
   };
 
   function escapeXml(unsafe) {
-    return unsafe.replace(/[<>&'"]/g, function (c) {
+    return String(unsafe || '').replace(/[<>&'"]/g, c => {
       switch (c) {
         case '<': return '&lt;';
         case '>': return '&gt;';
         case '&': return '&amp;';
         case '\'': return '&apos;';
         case '"': return '&quot;';
+        default: return c;
       }
-      return c;
     });
   }
 
-  const [isNavigatingToScanner, setIsNavigatingToScanner] = useState(false);
-  const [isNavigatingToBadge, setIsNavigatingToBadge] = useState(false);
-
   return (
-    <div className="w-full">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h3 className="text-xl font-bold text-dark dark:text-white flex items-center gap-2">
-           <FiUsers className="text-primary" /> Liste des Invités ({guests.length})
-           {allGuestsCount > guests.length && (
-             <span className="px-2 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-bold">
-               {allGuestsCount - guests.length} doublons masqués
-             </span>
-           )}
-        </h3>
-         <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-dark-3 rounded-lg border border-stroke dark:border-white/10">
-              <span className="text-[10px] font-black text-gray-400 uppercase">Session :</span>
-              <select 
-                value={selectedSession} 
-                onChange={(e) => setSelectedSession(e.target.value)}
-                className="bg-transparent text-xs font-bold text-primary outline-none"
-              >
-                {availableSessions.map(s => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-dark-3 rounded-lg border border-stroke dark:border-white/10">
-              <span className="text-[10px] font-black text-gray-400 uppercase">Jours / Page :</span>
-              <select 
-                value={pdfDaysPerPage} 
-                onChange={(e) => setPdfDaysPerPage(e.target.value)}
-                className="bg-transparent text-xs font-bold text-dark dark:text-white outline-none"
-              >
-                <option value="1">1 jour</option>
-                <option value="2">2 jours</option>
-                <option value="3">3 jours</option>
-                <option value="4">4 jours</option>
-                <option value="6">6 jours</option>
-              </select>
-            </div>
-            <AppLink 
-              href={`/dashboard/events/${event.id}/scanner`}
-              onClick={() => setIsNavigatingToScanner(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition text-sm font-bold shadow-lg shadow-primary/20 disabled:opacity-70"
-            >
-              {isNavigatingToScanner ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <FiCamera />
+    <div className="w-full space-y-6">
+      {/* Action Header & Bar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+            <FiUsers size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-extrabold text-slate-900">
+                Liste des Invités ({filteredGuests.length})
+              </h3>
+              {guests.length !== filteredGuests.length && (
+                <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                  {filteredGuests.length} filtré(s) sur {guests.length}
+                </span>
               )}
-              {isNavigatingToScanner ? 'Chargement...' : 'Lancer le scanner'}
-            </AppLink>
-            <AppLink 
-              href={`/dashboard/events/${event.id}/badge`}
-              onClick={() => setIsNavigatingToBadge(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition text-sm font-bold shadow-lg disabled:opacity-70"
-            >
-              {isNavigatingToBadge ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <FiPrinter />
-              )}
-              {isNavigatingToBadge ? 'Chargement...' : 'Badges & Impression'}
-            </AppLink>
-           <button 
+            </div>
+            <p className="text-xs font-medium text-slate-500">
+              Gérez les présences, effectuez des recherches et importez votre liste
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Live Scanner Button */}
+          <button
+            onClick={() => setIsScannerModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+          >
+            <FiCamera size={15} />
+            <span>Scanner QR Code</span>
+          </button>
+
+          {/* Excel Import Button */}
+          <button
+            onClick={() => setIsExcelModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-800 hover:border-indigo-600 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+          >
+            <FiUpload size={15} />
+            <span>Importer Excel</span>
+          </button>
+
+          {/* Badge Generator Link */}
+          <AppLink 
+            href={`/dashboard/events/${event.id}/badge`}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+          >
+            <FiPrinter size={15} />
+            <span>Imprimer Badges</span>
+          </AppLink>
+
+          {/* PDF Report Export */}
+          <button 
             disabled={isExportingPDF}
             onClick={exportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-3 text-dark dark:text-white border border-stroke dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-4 transition text-sm font-bold shadow-sm disabled:opacity-50"
-           >
-             {isExportingPDF ? (
-               <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-             ) : (
-               <FiFileText className="text-red-500" />
-             )}
-             {isExportingPDF ? 'Génération...' : 'PDF Rapport'}
-           </button>
-           <button 
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+          >
+            <FiFileText className="text-rose-500" size={15} />
+            <span>PDF</span>
+          </button>
+
+          {/* XML Export */}
+          <button 
             disabled={isExportingXML}
             onClick={exportXML}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-3 text-dark dark:text-white border border-stroke dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-4 transition text-sm font-bold shadow-sm disabled:opacity-50"
-           >
-             {isExportingXML ? (
-               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-             ) : (
-               <FiDownload className="text-blue-500" />
-             )}
-             {isExportingXML ? 'Exportation...' : 'XML Export'}
-           </button>
+            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+          >
+            <FiDownload className="text-blue-500" size={15} />
+            <span>XML</span>
+          </button>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-dark-2 rounded-3xl border border-stroke dark:border-white/10 overflow-hidden shadow-sm">
+      {/* Advanced Search & Filtering Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Field Target Dropdown */}
+          <div className="w-full sm:w-56 shrink-0">
+            <select
+              value={searchTargetField}
+              onChange={(e) => setSearchTargetField(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            >
+              <option value="ALL">🔍 Tous les champs (Global)</option>
+              <option value="name">👤 Nom complet</option>
+              <option value="phone">📞 Téléphone</option>
+              {customFieldsConfig.map(field => (
+                <option key={field.id || field.name} value={field.name}>
+                  📋 {field.label || field.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search Query Input */}
+          <div className="relative flex-1 w-full">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input 
+              type="text"
+              placeholder={`Rechercher un invité par ${searchTargetField === 'ALL' ? 'nom, téléphone, entreprise...' : searchTargetField}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 text-slate-900 placeholder:text-slate-400 pl-10 pr-9 py-2 rounded-xl text-xs font-medium border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+              >
+                <FiX size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter Dropdown */}
+          <div className="w-full sm:w-44 shrink-0 flex items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-3 py-2 text-xs font-bold outline-none cursor-pointer"
+            >
+              <option value="ALL">Tous les statuts</option>
+              <option value="PAID">✅ Validés / Payés</option>
+              <option value="PENDING">⏳ En attente</option>
+            </select>
+          </div>
+
+          {/* Session Selector */}
+          <div className="w-full sm:w-36 shrink-0 bg-indigo-50/70 border border-indigo-100 rounded-xl px-3 py-2 flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase text-indigo-400">Session:</span>
+            <select 
+              value={selectedSession} 
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="bg-transparent text-xs font-bold text-indigo-700 outline-none cursor-pointer w-full"
+            >
+              {availableSessions.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Guest Data Table - PRISTINE WHITE LIGHT DESIGN */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-[750px]">
             <thead>
-              <tr className="border-b border-stroke dark:border-white/10 bg-gray-50/50 dark:bg-dark-3/50">
-                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider">Invité</th>
-                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider">Téléphone</th>
+              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <th className="py-3.5 px-5">Invité</th>
+                <th className="py-3.5 px-5">Téléphone</th>
                 {customFieldsConfig.map(field => (
-                  <th key={field.id} className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider">
-                    {field.label}
+                  <th key={field.id || field.name} className="py-3.5 px-5">
+                    {field.label || field.name}
                   </th>
                 ))}
-                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider text-center">Présence</th>
-                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider text-center">Statut</th>
-                <th className="p-6 text-xs font-black uppercase text-gray-400 tracking-wider text-right">Actions</th>
+                <th className="py-3.5 px-5 text-center">Présence ({selectedSession.toUpperCase()})</th>
+                <th className="py-3.5 px-5 text-center">Statut</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stroke dark:divide-white/10">
-              {guests.map((guest) => {
-                const additionalData = JSON.parse(guest.additionalData || '{}');
+            <tbody className="divide-y divide-slate-100 text-xs bg-white">
+              {filteredGuests.map((guest) => {
+                const additionalData = typeof guest.additionalData === 'string'
+                  ? JSON.parse(guest.additionalData || '{}')
+                  : (guest.additionalData || {});
+
+                const attendanceMap = typeof guest.attendance === 'string'
+                  ? JSON.parse(guest.attendance || '{}')
+                  : (guest.attendance || {});
+
+                const isPresent = !!attendanceMap[selectedSession];
+
                 return (
-                  <tr key={guest.id} className="hover:bg-gray-50 dark:hover:bg-dark-3/50 transition-colors group">
-                    <td className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border-2 border-white dark:border-dark-3 shadow-sm">
+                  <tr key={guest.id} className="hover:bg-slate-50/70 transition-colors group">
+                    {/* Guest Name & Avatar */}
+                    <td className="py-3.5 px-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center text-slate-400 font-bold">
                           {guest.photoUrl ? (
                             <img src={guest.photoUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">
-                              <FiCamera size={20} />
-                            </div>
+                            <span>{guest.name.charAt(0).toUpperCase()}</span>
                           )}
                         </div>
-                        <span className="font-bold text-dark dark:text-white">{guest.name}</span>
+                        <span className="font-bold text-slate-900 text-sm">{guest.name}</span>
                       </div>
                     </td>
-                    <td className="p-6">
-                       <span className="text-sm font-medium text-body-color">{guest.phone || '-'}</span>
+
+                    {/* Phone */}
+                    <td className="py-3.5 px-5 font-mono text-slate-600 font-medium">
+                      {guest.phone || '-'}
                     </td>
                     
+                    {/* Custom Fields */}
                     {customFieldsConfig.map(field => (
-                      <td key={field.id} className="p-6 text-sm text-body-color font-medium">
+                      <td key={field.id || field.name} className="py-3.5 px-5 text-slate-700 font-medium">
                         {field.type === 'checkbox' ? (
                           additionalData[field.name] ? '✅' : '❌'
                         ) : (
@@ -322,43 +492,44 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
                       </td>
                     ))}
 
-                    <td className="p-6 text-center">
-                      {JSON.parse(guest.attendance || '{}')[selectedSession] ? (
-                        <span className="inline-flex items-center gap-1 text-green-500 font-bold text-xs">
-                          <FiCheckCircle /> Présent
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-xs">-</span>
-                      )}
+                    {/* Attendance Toggle Checkbox */}
+                    <td className="py-3.5 px-5 text-center">
+                      <button
+                        onClick={() => toggleAttendance(guest.id, selectedSession, isPresent)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                          isPresent 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm' 
+                            : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                        }`}
+                      >
+                        <FiCheckCircle size={13} className={isPresent ? 'text-emerald-600' : 'text-slate-400'} />
+                        <span>{isPresent ? 'Présent' : 'Absence'}</span>
+                      </button>
                     </td>
 
-                    <td className="p-6 text-center">
-                      <span className={cn("inline-flex px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border", {
-                        "bg-green-500/10 text-green-500 border-green-500/20": guest.status === 'PAID',
-                        "bg-yellow-500/10 text-yellow-500 border-yellow-500/20": guest.status === 'PENDING'
-                      })}>
+                    {/* Status Badge */}
+                    <td className="py-3.5 px-5 text-center">
+                      <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                        guest.status === 'PAID'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
                         {guest.status === 'PAID' ? 'Validé' : 'En attente'}
                       </span>
-                    </td>
-
-                    <td className="p-6 text-right">
-                      <div className="flex justify-end gap-3">
-                        {guest.generatedImageUrl && (
-                          <a href={guest.generatedImageUrl} target="_blank" className="p-2 text-primary hover:bg-primary/10 rounded-lg transition" title="Voir l'affiche">
-                            <FiDownload size={18} />
-                          </a>
-                        )}
-                      </div>
                     </td>
                   </tr>
                 );
               })}
-              {guests.length === 0 && (
+
+              {filteredGuests.length === 0 && (
                 <tr>
-                  <td colSpan={3 + customFieldsConfig.length} className="p-20 text-center">
-                    <div className="flex flex-col items-center">
-                      <FiUsers size={48} className="text-gray-200 mb-4" />
-                      <p className="text-body-color font-medium italic">Aucun invité pour le moment.</p>
+                  <td colSpan={4 + customFieldsConfig.length} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <FiUsers size={40} className="text-slate-300 mb-3" />
+                      <p className="text-slate-700 font-bold text-sm mb-1">Aucun invité trouvé</p>
+                      <p className="text-slate-400 text-xs">
+                        {searchQuery ? 'Essayez de modifier votre recherche.' : 'Importez vos invités via Excel ou partagez le lien d\'invitation.'}
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -367,6 +538,23 @@ const GuestManagerTable = ({ event, guests, allGuestsCount }) => {
           </table>
         </div>
       </div>
+
+      {/* Modals */}
+      <ExcelImportModal 
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        eventId={event.id}
+        onGuestsImported={() => router.refresh()}
+      />
+
+      <LiveQRScannerModal 
+        isOpen={isScannerModalOpen}
+        onClose={() => setIsScannerModalOpen(false)}
+        event={event}
+        guests={guests}
+        selectedSession={selectedSession}
+        onAttendanceMarked={handleAttendanceMarked}
+      />
     </div>
   );
 };

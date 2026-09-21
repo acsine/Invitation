@@ -6,6 +6,7 @@ import { FiTrash2, FiShield, FiUser, FiSearch, FiBan, FiPlusCircle, FiCheckCircl
 import { toast } from 'react-hot-toast';
 import cn from 'classnames';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/Modal';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -358,38 +359,59 @@ export default function AdminUsers() {
 
       {/* Confirmation Modal */}
       {confirmModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-gray-900/40 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-[48px] border border-gray-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-12 text-center">
-              <div className={cn(
-                "w-20 h-20 rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-xl",
-                confirmModal.type === 'danger' ? "bg-red-50 text-red-500 shadow-red-100" : "bg-primary/5 text-primary shadow-primary/5"
-              )}>
-                {confirmModal.type === 'danger' ? <FiAlertTriangle size={40} /> : <FiShield size={40} />}
-              </div>
-              <h3 className="text-3xl font-black text-gray-900 mb-4 uppercase tracking-tight">{confirmModal.title}</h3>
-              <p className="text-gray-500 text-sm font-medium leading-relaxed mb-12">
-                {confirmModal.message}
-              </p>
-              <div className="flex flex-col gap-4">
-                <Button 
-                  onClick={confirmModal.onConfirm}
-                  loading={isConfirming}
-                  variant={confirmModal.type === 'danger' ? 'danger' : 'primary'}
-                  className="w-full py-5 rounded-[24px] text-xs h-14"
-                >
-                  Confirmer
-                </Button>
-                <button 
-                  onClick={() => setConfirmModal(null)}
-                  className="w-full py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-xs text-gray-400 hover:text-gray-900 transition-colors"
-                >
-                  Annuler
-                </button>
-              </div>
+        <Modal
+          visible={!!confirmModal}
+          onClose={() => setConfirmModal(null)}
+          outerClassName="max-w-md"
+          containerClassName="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl"
+        >
+          <div className="text-center pt-2">
+            <div className={cn(
+              "mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border shadow-xl",
+              confirmModal.type === 'danger' 
+                ? "bg-rose-50 dark:bg-rose-950/40 text-rose-500 border-rose-100 dark:border-rose-900/50 shadow-rose-500/10" 
+                : "bg-blue-50 dark:bg-blue-950/40 text-blue-600 border-blue-100 dark:border-blue-900/50 shadow-blue-500/10"
+            )}>
+              {confirmModal.type === 'danger' ? <FiAlertTriangle size={28} className="stroke-[2.2]" /> : <FiShield size={28} className="stroke-[2.2]" />}
+            </div>
+            
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {confirmModal.title}
+            </h3>
+            
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 leading-relaxed px-2">
+              {confirmModal.message}
+            </p>
+
+            <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                disabled={isConfirming}
+                className="w-full sm:flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmModal.onConfirm}
+                disabled={isConfirming}
+                className={cn(
+                  "w-full sm:flex-1 py-3 px-4 rounded-xl text-white font-semibold text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50",
+                  confirmModal.type === 'danger'
+                    ? "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 shadow-rose-600/25"
+                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-600/25"
+                )}
+              >
+                {isConfirming ? (
+                  <span>En cours...</span>
+                ) : (
+                  <span>Confirmer</span>
+                )}
+              </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

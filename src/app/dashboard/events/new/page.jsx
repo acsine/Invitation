@@ -5,8 +5,14 @@ import PosterEditor from '@/components/canvas/PosterEditor';
 import cn from 'classnames';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import Icon from '@/components/Icon';
+import AppLink from '@/components/AppLink';
 import FullPageLoader from '@/components/FullPageLoader';
+import { 
+  FiArrowLeft, FiCalendar, FiClock, FiPlus, FiTrash2, 
+  FiDollarSign, FiTag, FiLayers, FiUser, 
+  FiFileText, FiSmartphone, FiBriefcase, FiMapPin, FiPhone, FiArrowRight
+} from 'react-icons/fi';
+import { BsQrCode, BsStars, BsShieldCheck } from 'react-icons/bs';
 
 export default function NewEventPage() {
   const [name, setName] = useState('');
@@ -20,6 +26,7 @@ export default function NewEventPage() {
   const [endDate, setEndDate] = useState('');
   const [sessionsPerDay, setSessionsPerDay] = useState(1);
   const [sessionConfig, setSessionConfig] = useState([{ id: 1, name: 'Session 1', time: '08:00' }]);
+  const [activeTab, setActiveTab] = useState(1);
   const router = useRouter();
 
   const handleSessionsChange = (count) => {
@@ -41,30 +48,87 @@ export default function NewEventPage() {
     if (!start || !end) return 1;
     const s = new Date(start);
     const e = new Date(end);
-    const diffTime = Math.abs(e - s);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    if (e < s) return 1;
+    const diffTime = e.getTime() - s.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays > 0 ? diffDays : 1;
   };
 
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDateChange = (type, val) => {
+    const todayStr = getTodayString();
     if (type === 'start') {
+      if (val && val < todayStr) {
+        toast.error('La date de début ne peut pas être une date passée');
+        setStartDate(todayStr);
+        if (endDate && endDate < todayStr) {
+          setEndDate(todayStr);
+        }
+        setAttendanceDays(calculateDays(todayStr, endDate || todayStr));
+        return;
+      }
       setStartDate(val);
-      setAttendanceDays(calculateDays(val, endDate));
+      if (endDate && val && new Date(endDate) < new Date(val)) {
+        setEndDate(val);
+        setAttendanceDays(1);
+      } else {
+        setAttendanceDays(calculateDays(val, endDate));
+      }
     } else {
-      setEndDate(val);
-      setAttendanceDays(calculateDays(startDate, val));
+      if (val && val < todayStr) {
+        toast.error('La date de fin ne peut pas être une date passée');
+        setEndDate(todayStr);
+        return;
+      }
+      if (startDate && val && new Date(val) < new Date(startDate)) {
+        toast.error('La date de fin ne peut pas être antérieure à la date de début');
+        setEndDate(startDate);
+        setAttendanceDays(1);
+      } else {
+        setEndDate(val);
+        setAttendanceDays(calculateDays(startDate, val));
+      }
     }
   };
 
-  const addField = () => {
-    setCustomFields([...customFields, { 
-      id: Date.now(), 
-      name: `field_${Date.now()}`, 
+  const addField = (preset = null) => {
+    const newId = Date.now();
+    let newField = { 
+      id: newId, 
+      name: `field_${newId}`, 
       label: '', 
       type: 'text', 
       required: true, 
       options: '' 
-    }]);
+    };
+
+    if (preset === 'company') {
+      newField.label = "Nom de l'entreprise / Organisation";
+      newField.name = "company";
+    } else if (preset === 'jobTitle') {
+      newField.label = "Fonction / Poste";
+      newField.name = "job_title";
+    } else if (preset === 'phone') {
+      newField.label = "Numéro de Téléphone";
+      newField.name = "phone";
+    } else if (preset === 'city') {
+      newField.label = "Ville / Pays";
+      newField.name = "city";
+    } else if (preset === 'tshirt') {
+      newField.label = "Taille T-Shirt";
+      newField.type = "select";
+      newField.options = "S, M, L, XL, XXL";
+      newField.name = "tshirt_size";
+    }
+
+    setCustomFields([...customFields, newField]);
   };
 
   const removeField = (id) => {
@@ -75,13 +139,46 @@ export default function NewEventPage() {
     setCustomFields(customFields.map(f => f.id === id ? { ...f, ...updates } : f));
   };
 
+  const goToStep2 = () => {
+    if (!name.trim()) {
+      toast.error('Veuillez saisir le nom de l\'événement pour continuer');
+      return;
+    }
+    const todayStr = getTodayString();
+    if (startDate && startDate < todayStr) {
+      toast.error('La date de début ne peut pas être une date passée');
+      return;
+    }
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      toast.error('La date de fin ne peut pas être antérieure à la date de début');
+      return;
+    }
+    if (isPaid && (!price || parseFloat(price) <= 0)) {
+      toast.error('Veuillez définir un tarif valide pour l\'événement payant');
+      return;
+    }
+    setActiveTab(2);
+  };
+
+  const goToStep3 = () => {
+    setActiveTab(3);
+  };
+
   const handleSave = async ({ backgroundImageUrl, zones, designWidth, designHeight }) => {
-    if (!name) {
+    if (!name.trim()) {
       toast.error('Veuillez donner un nom à l\'événement');
+      setActiveTab(1);
+      return;
+    }
+    const todayStr = getTodayString();
+    if (startDate && startDate < todayStr) {
+      toast.error('La date de début ne peut pas être une date passée');
+      setActiveTab(1);
       return;
     }
     if (!backgroundImageUrl) {
-      toast.error('Veuillez uploader une image de fond');
+      toast.error('Veuillez uploader une image de fond pour le badge');
+      setActiveTab(3);
       return;
     }
 
@@ -91,14 +188,14 @@ export default function NewEventPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
+          name: name.trim(),
           backgroundImageUrl,
           zones,
           designWidth,
           designHeight,
           isPaid,
-          price,
-          paymentNumber,
+          price: isPaid ? parseFloat(price) || 0 : 0,
+          paymentNumber: isPaid ? paymentNumber : '',
           customFields: JSON.stringify(customFields),
           attendanceDays: parseInt(attendanceDays) || 1,
           startDate,
@@ -107,7 +204,6 @@ export default function NewEventPage() {
           sessionConfig: JSON.stringify(sessionConfig),
         }),
       });
-
 
       if (res.ok) {
         toast.success('Événement créé avec succès !');
@@ -118,221 +214,497 @@ export default function NewEventPage() {
       }
     } catch (error) {
       toast.error('Erreur réseau');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold text-dark dark:text-white">Nouvel Événement</h2>
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+      
+      {/* 1. COMPACT HEADER & STEPPER TABS */}
+      <div className="relative bg-gradient-to-r from-[#0B1736] via-[#1E293B] to-[#0B1736] py-4 px-6 sm:px-8 rounded-[24px] text-white shadow-xl overflow-hidden border border-slate-700/50">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#3B52E8]/20 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FF6500]/15 blur-[90px] rounded-full pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <AppLink 
+                href="/dashboard/events"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-all backdrop-blur-md"
+              >
+                <FiArrowLeft size={13} /> <span>Mes Événements</span>
+              </AppLink>
+              <span className="text-slate-500">•</span>
+              <span className="text-[10px] font-semibold text-[#FF6500] uppercase tracking-wider flex items-center gap-1">
+                <BsStars size={12} /> Étape {activeTab} sur 3
+              </span>
+            </div>
+
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {activeTab === 1 && "Étape 1 : Informations Générales"}
+              {activeTab === 2 && "Étape 2 : Formulaire de Collecte & Sessions"}
+              {activeTab === 3 && "Étape 3 : Conception Visuelle du Pass HD"}
+            </h1>
+          </div>
+
+          {/* Stepper Tabs Nav */}
+          <div className="flex items-center gap-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-700/60 backdrop-blur-xl shrink-0">
+            <button
+              onClick={() => setActiveTab(1)}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black transition-all cursor-pointer",
+                activeTab === 1 
+                  ? "bg-[#3B52E8] text-white shadow-md shadow-[#3B52E8]/30" 
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              )}
+            >
+              <span className="w-4 h-4 rounded-full bg-white/20 text-white flex items-center justify-center text-[10px]">1</span>
+              <span>Général</span>
+            </button>
+            <button
+              onClick={() => goToStep2()}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black transition-all cursor-pointer",
+                activeTab === 2 
+                  ? "bg-[#3B52E8] text-white shadow-md shadow-[#3B52E8]/30" 
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              )}
+            >
+              <span className="w-4 h-4 rounded-full bg-white/20 text-white flex items-center justify-center text-[10px]">2</span>
+              <span>Formulaire</span>
+            </button>
+            <button
+              onClick={() => {
+                if (!name.trim()) {
+                  toast.error('Veuillez d\'abord saisir le nom de l\'événement');
+                  return;
+                }
+                setActiveTab(3);
+              }}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-black transition-all cursor-pointer",
+                activeTab === 3 
+                  ? "bg-[#FF6500] text-white shadow-md shadow-[#FF6500]/30" 
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              )}
+            >
+              <span className="w-4 h-4 rounded-full bg-white/20 text-white flex items-center justify-center text-[10px]">3</span>
+              <span>Pass HD</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-dark-2 p-8 rounded-xl border border-stroke dark:border-white/10 shadow-1 mb-8">
-        <div className="mb-6">
-          <label className="mb-3 block text-base font-medium text-dark dark:text-white">
-            Nom de l'événement
-          </label>
-          <input 
-            type="text" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex: Conférence Tech 2026"
-            className="w-full rounded-md border-[1.5px] border-stroke bg-transparent py-3 px-5 text-base text-body-color outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter"
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div>
-            <label className="mb-3 block text-sm font-bold text-dark dark:text-white uppercase tracking-wider">Date de début</label>
-            <input 
-              type="date" 
-              value={startDate} 
-              onChange={(e) => handleDateChange('start', e.target.value)}
-              className="w-full rounded-xl border border-stroke bg-transparent py-3 px-5 text-dark dark:text-white outline-none focus:border-primary transition"
-            />
-          </div>
-          <div>
-            <label className="mb-3 block text-sm font-bold text-dark dark:text-white uppercase tracking-wider">Date de fin</label>
-            <input 
-              type="date" 
-              value={endDate} 
-              onChange={(e) => handleDateChange('end', e.target.value)}
-              className="w-full rounded-xl border border-stroke bg-transparent py-3 px-5 text-dark dark:text-white outline-none focus:border-primary transition"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-6 items-center">
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <div className={cn(
-              "w-6 h-6 rounded border-2 flex items-center justify-center transition-all", 
-              isPaid ? "bg-primary border-primary" : "border-stroke group-hover:border-primary"
-            )}>
-              {isPaid && <Icon name="check" size="14" fill="#FFF" />}
-            </div>
-            <input type="checkbox" checked={isPaid} onChange={(e) => setIsPaid(e.target.checked)} className="hidden" />
-            <span className="font-bold text-sm text-dark dark:text-white">Affiche payante</span>
-          </label>
+      {/* STEP 1: INFORMATIONS GÉNÉRALES DE L'ÉVÉNEMENT */}
+      {activeTab === 1 && (
+        <div className="bg-white p-6 sm:p-8 rounded-[28px] border border-slate-200/80 shadow-sm space-y-7 animate-in fade-in duration-300">
           
-          {isPaid && (
-            <div className="flex flex-wrap gap-4 transition-all duration-300">
-              <input 
-                type="number" 
-                value={price} 
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Prix (FCFA)"
-                className="w-40 rounded-md border-[1.5px] border-stroke bg-transparent py-3 px-5 text-base text-body-color outline-none transition focus:border-primary active:border-primary"
-              />
-              <input 
-                type="text" 
-                value={paymentNumber} 
-                onChange={(e) => setPaymentNumber(e.target.value)}
-                placeholder="Numéro Mobile Money"
-                className="w-64 rounded-md border-[1.5px] border-stroke bg-transparent py-3 px-5 text-base text-body-color outline-none transition focus:border-primary active:border-primary"
-              />
-            </div>
-          )}
-        </div>
-        
-        <div className="mt-8 pt-8 border-t border-stroke dark:border-white/10">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-dark dark:text-white">Configuration des sessions</h3>
-              <p className="text-sm text-body-color">Définissez le nombre de sessions par jour (max 3)</p>
-            </div>
-            <select 
-              value={sessionsPerDay}
-              onChange={(e) => handleSessionsChange(e.target.value)}
-              className="rounded-xl border border-stroke bg-white dark:bg-dark py-2 px-4 text-sm font-bold text-dark dark:text-white outline-none focus:border-primary"
-            >
-              <option value="1">1 session par jour</option>
-              <option value="2">2 sessions par jour</option>
-              <option value="3">3 sessions par jour</option>
-            </select>
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+             <div className="flex items-center gap-3">
+               <div className="w-10 h-10 rounded-xl bg-[#3B52E8]/10 text-[#3B52E8] flex items-center justify-center font-bold">
+                 <FiCalendar size={20} />
+               </div>
+               <div>
+                 <h3 className="text-lg font-black text-slate-900 tracking-tight">Paramètres Principaux</h3>
+                 <p className="text-xs text-slate-500 font-medium">Nom, dates et conditions de tarif</p>
+               </div>
+             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-            {sessionConfig.map((session) => (
-              <div key={session.id} className="p-4 bg-gray-50 dark:bg-dark/50 rounded-2xl border border-stroke dark:border-white/10">
-                <label className="block text-xs font-black uppercase text-gray-400 mb-2">Heure {session.name}</label>
+          {/* Nom de l'événement */}
+          <div className="space-y-2">
+             <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+               Nom de l'événement <span className="text-rose-500">*</span>
+             </label>
+             <div className="relative group">
+               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#3B52E8]">
+                 <FiTag size={18} />
+               </div>
+               <input 
+                 type="text" 
+                 value={name} 
+                 onChange={(e) => setName(e.target.value)}
+                 placeholder="ex: Gala d'Excellence 2026, Conférence Tech, Mariage..."
+                 className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] py-3.5 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all focus:bg-white focus:border-[#3B52E8] focus:ring-4 focus:ring-[#3B52E8]/10"
+                 required
+               />
+             </div>
+          </div>
+
+          {/* Dates Début & Fin */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-end">
+             <div className="space-y-2">
+               <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+                 Date de Début
+               </label>
                 <input 
-                  type="time" 
-                  value={session.time}
-                  onChange={(e) => updateSessionTime(session.id, e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-white dark:bg-dark py-2 px-3 text-sm font-bold text-dark dark:text-white outline-none focus:border-primary"
+                  type="date" 
+                  value={startDate} 
+                  min={getTodayString()}
+                  onChange={(e) => handleDateChange('start', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] py-3 px-4 text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-[#3B52E8]"
                 />
-              </div>
-            ))}
+             </div>
+
+             <div className="space-y-2">
+               <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+                 Date de Fin
+               </label>
+                <input 
+                  type="date" 
+                  value={endDate} 
+                  min={startDate || undefined}
+                  onChange={(e) => handleDateChange('end', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-[#F8FAFC] py-3 px-4 text-xs font-semibold text-slate-900 outline-none focus:bg-white focus:border-[#3B52E8]"
+                />
+             </div>
+
+             {/* Durée Calculée Card */}
+             <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50/60 border border-blue-100 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#3B52E8] block">Durée Totale</span>
+                  <span className="text-xl font-black text-slate-900">{attendanceDays} Jour{attendanceDays > 1 ? 's' : ''}</span>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-[#3B52E8] text-white flex items-center justify-center font-black shadow-sm">
+                  <FiClock size={16} />
+                </div>
+             </div>
           </div>
 
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-dark dark:text-white">Collecte de données invités</h3>
-              <p className="text-sm text-body-color">Définissez les informations que vos invités doivent remplir</p>
-            </div>
-            <button 
-              onClick={addField}
+          {/* Option Gratuit / Payant */}
+          <div className="pt-4 border-t border-slate-100 space-y-5">
+             <div className="flex items-center justify-between p-4 rounded-xl bg-[#F8FAFC] border border-slate-200/80">
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-xl bg-amber-100/80 text-[#FF6500] flex items-center justify-center font-bold">
+                     <FiDollarSign size={20} />
+                   </div>
+                   <div>
+                     <h4 className="text-sm font-black text-slate-900">Événement Payant / Billetterie</h4>
+                     <p className="text-xs text-slate-500 font-medium">Exiger un règlement Mobile Money avant la livraison du pass</p>
+                   </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={isPaid} 
+                    onChange={(e) => setIsPaid(e.target.checked)} 
+                    className="sr-only peer" 
+                  />
+                  <div className="w-12 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6500]"></div>
+                </label>
+             </div>
+
+             {/* Inputs pour événement payant */}
+             {isPaid && (
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 p-5 rounded-xl bg-amber-50/50 border border-amber-200/80 animate-in fade-in duration-300">
+                  <div className="space-y-1.5">
+                     <label className="block text-xs font-black uppercase tracking-wider text-slate-800">
+                       Tarif du Pass (FCFA) <span className="text-rose-500">*</span>
+                     </label>
+                     <input 
+                       type="number" 
+                       value={price} 
+                       onChange={(e) => setPrice(e.target.value)}
+                       placeholder="ex: 5000"
+                       className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3.5 text-xs font-bold text-slate-900 outline-none focus:border-[#FF6500]"
+                     />
+                  </div>
+                  <div className="space-y-1.5">
+                     <label className="block text-xs font-black uppercase tracking-wider text-slate-800">
+                       Numéro Mobile Money (Encaissement)
+                     </label>
+                     <div className="relative">
+                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                         <FiSmartphone size={16} />
+                       </div>
+                       <input 
+                         type="text" 
+                         value={paymentNumber} 
+                         onChange={(e) => setPaymentNumber(e.target.value)}
+                         placeholder="ex: +225 0700000000"
+                         className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3.5 text-xs font-bold text-slate-900 outline-none focus:border-[#FF6500]"
+                       />
+                     </div>
+                  </div>
+               </div>
+             )}
+          </div>
+
+          {/* Action Next Step */}
+          <div className="pt-4 flex justify-end border-t border-slate-100">
+            <button
               type="button"
-              className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold hover:bg-primary hover:text-white transition"
+              onClick={goToStep2}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#3B52E8] hover:bg-[#2b40c7] text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md hover:scale-[1.01] active:scale-95"
             >
-              <Icon name="plus" size="18" /> Ajouter un champ
+              <span>Suivant : Formulaire de collecte</span>
+              <FiArrowRight size={16} />
             </button>
           </div>
 
+        </div>
+      )}
+
+      {/* STEP 2: SESSIONS & FORMULAIRE DE COLLECTE INVITÉS */}
+      {activeTab === 2 && (
+        <div className="bg-white p-6 sm:p-8 rounded-[28px] border border-slate-200/80 shadow-sm space-y-7 animate-in fade-in duration-300">
+          
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+             <div className="flex items-center gap-3">
+               <div className="w-10 h-10 rounded-xl bg-amber-100/80 text-[#FF6500] flex items-center justify-center font-bold">
+                 <FiLayers size={20} />
+               </div>
+               <div>
+                 <h3 className="text-lg font-black text-slate-900 tracking-tight">Formulaire & Horaires</h3>
+                 <p className="text-xs text-slate-500 font-medium">Informations demandées aux invités et sous-sessions</p>
+               </div>
+             </div>
+          </div>
+
+          {/* Sessions par jour */}
           <div className="space-y-4">
-            {customFields.map((field) => (
-              <div key={field.id} className="flex flex-wrap items-end gap-4 p-4 bg-gray-50 dark:bg-dark/50 rounded-xl border border-stroke dark:border-white/10 animate-in slide-in-from-left-4 duration-300">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="mb-2 block text-xs font-black uppercase text-gray-400">Libellé du champ</label>
-                  <input 
-                    type="text" 
-                    value={field.label}
-                    onChange={(e) => updateField(field.id, { label: e.target.value })}
-                    placeholder="Ex: Entreprise, Profession..."
-                    className="w-full rounded-md border border-stroke bg-white dark:bg-dark py-2 px-4 text-sm text-dark dark:text-white outline-none focus:border-primary"
-                  />
-                </div>
-                
-                <div className="w-40">
-                  <label className="mb-2 block text-xs font-black uppercase text-gray-400">Type</label>
-                  <select 
-                    value={field.type}
-                    onChange={(e) => updateField(field.id, { type: e.target.value })}
-                    className="w-full rounded-md border border-stroke bg-white dark:bg-dark py-2 px-4 text-sm text-dark dark:text-white outline-none focus:border-primary"
-                  >
-                    <option value="text">Texte</option>
-                    <option value="number">Nombre</option>
-                    <option value="checkbox">Case à cocher</option>
-                    <option value="select">Liste déroulante</option>
-                  </select>
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">Sessions journalières</h4>
+                  <p className="text-xs text-slate-500 font-medium">Heures des sous-créneaux par jour d'événement</p>
                 </div>
 
-                {field.type === 'select' && (
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="mb-2 block text-xs font-black uppercase text-gray-400">Options (séparées par des virgules)</label>
-                    <input 
-                      type="text" 
-                      value={field.options}
-                      onChange={(e) => updateField(field.id, { options: e.target.value })}
-                      placeholder="Option 1, Option 2..."
-                      className="w-full rounded-md border border-stroke bg-white dark:bg-dark py-2 px-4 text-sm text-dark dark:text-white outline-none focus:border-primary"
-                    />
-                  </div>
-                )}
+                <select 
+                  value={sessionsPerDay}
+                  onChange={(e) => handleSessionsChange(e.target.value)}
+                  className="rounded-xl border border-slate-200 bg-[#F8FAFC] py-2 px-4 text-xs font-extrabold text-slate-900 outline-none focus:border-[#3B52E8] cursor-pointer"
+                >
+                  <option value="1">1 session par jour</option>
+                  <option value="2">2 sessions par jour</option>
+                  <option value="3">3 sessions par jour</option>
+                </select>
+             </div>
 
-                <div className="flex items-center gap-3 h-[38px] px-2">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <div className={cn(
-                      "w-5 h-5 rounded border flex items-center justify-center transition-all", 
-                      field.required ? "bg-primary border-primary" : "border-stroke group-hover:border-primary"
-                    )}>
-                      {field.required && <Icon name="check" size="12" fill="#FFF" />}
-                    </div>
-                    <input 
-                      type="checkbox" 
-                      checked={field.required} 
-                      onChange={(e) => updateField(field.id, { required: e.target.checked })} 
-                      className="hidden" 
-                    />
-                    <span className="text-xs font-bold text-dark dark:text-white">Obligatoire</span>
-                  </label>
+             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+               {sessionConfig.map((session) => (
+                 <div key={session.id} className="p-3 bg-[#F8FAFC] rounded-xl border border-slate-200/80 space-y-1.5">
+                   <label className="block text-[10px] font-black uppercase text-slate-500">
+                     Heure {session.name}
+                   </label>
+                   <input 
+                     type="time" 
+                     value={session.time}
+                     onChange={(e) => updateSessionTime(session.id, e.target.value)}
+                     className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-xs font-bold text-slate-900 outline-none focus:border-[#3B52E8]"
+                   />
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          {/* Formulaire de collecte personnalisée */}
+          <div className="pt-5 border-t border-slate-100 space-y-5">
+             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">Champs requis pour les Invités</h4>
+                  <p className="text-xs text-slate-500 font-medium">
+                    (Le Nom Complet et le Téléphone sont déjà inclus par défaut)
+                  </p>
                 </div>
 
                 <button 
-                  onClick={() => removeField(field.id)}
+                  onClick={() => addField()}
                   type="button"
-                  className="w-[38px] h-[38px] flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition"
+                  className="px-3.5 py-2 rounded-xl bg-[#3B52E8]/10 hover:bg-[#3B52E8] text-[#3B52E8] hover:text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer self-start sm:self-auto"
                 >
-                  <Icon name="trash" size="18" />
+                  <FiPlus size={15} /> <span>+ Ajouter un champ</span>
                 </button>
-              </div>
-            ))}
+             </div>
 
-            {customFields.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed border-stroke dark:border-white/10 rounded-xl text-gray-400 font-medium">
-                Aucun champ personnalisé défini
-              </div>
-            )}
+             {/* Preset Chips */}
+             <div className="space-y-1.5">
+               <span className="text-[10px] font-black uppercase text-slate-400 block">Modèles rapides :</span>
+               <div className="flex flex-wrap items-center gap-2">
+                 <button
+                   type="button"
+                   onClick={() => addField('company')}
+                   className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-[#3B52E8]/10 text-slate-700 hover:text-[#3B52E8] text-xs font-bold transition-all flex items-center gap-1 border border-slate-200/60"
+                 >
+                   <FiBriefcase size={13} /> + Entreprise
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => addField('jobTitle')}
+                   className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-[#3B52E8]/10 text-slate-700 hover:text-[#3B52E8] text-xs font-bold transition-all flex items-center gap-1 border border-slate-200/60"
+                 >
+                   <FiUser size={13} /> + Fonction
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => addField('phone')}
+                   className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-[#3B52E8]/10 text-slate-700 hover:text-[#3B52E8] text-xs font-bold transition-all flex items-center gap-1 border border-slate-200/60"
+                 >
+                   <FiPhone size={13} /> + Téléphone
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => addField('city')}
+                   className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-[#3B52E8]/10 text-slate-700 hover:text-[#3B52E8] text-xs font-bold transition-all flex items-center gap-1 border border-slate-200/60"
+                 >
+                   <FiMapPin size={13} /> + Ville
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => addField('tshirt')}
+                   className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-[#3B52E8]/10 text-slate-700 hover:text-[#3B52E8] text-xs font-bold transition-all flex items-center gap-1 border border-slate-200/60"
+                 >
+                   <FiTag size={13} /> + Taille T-Shirt
+                 </button>
+               </div>
+             </div>
+
+             {/* Custom Fields List */}
+             <div className="space-y-3">
+               {customFields.map((field, idx) => (
+                 <div key={field.id} className="flex flex-wrap items-end gap-3 p-4 bg-[#F8FAFC] rounded-xl border border-slate-200/80 animate-in slide-in-from-left-4 duration-300">
+                   
+                   <div className="flex-1 min-w-[180px]">
+                     <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">
+                       Champ #{idx + 1} - Intitulé
+                     </label>
+                     <input 
+                       type="text" 
+                       value={field.label}
+                       onChange={(e) => updateField(field.id, { label: e.target.value })}
+                       placeholder="ex: Nom de l'entreprise, Taille T-Shirt..."
+                       className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-xs font-bold text-slate-900 outline-none focus:border-[#3B52E8]"
+                     />
+                   </div>
+                   
+                   <div className="w-40">
+                     <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Type de Saisie</label>
+                     <select 
+                       value={field.type}
+                       onChange={(e) => updateField(field.id, { type: e.target.value })}
+                       className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-xs font-bold text-slate-900 outline-none focus:border-[#3B52E8]"
+                     >
+                       <option value="text">Texte Libre</option>
+                       <option value="number">Nombre</option>
+                       <option value="checkbox">Case à Cocher</option>
+                       <option value="select">Menu Déroulant</option>
+                     </select>
+                   </div>
+
+                   {field.type === 'select' && (
+                     <div className="flex-1 min-w-[180px]">
+                       <label className="mb-1 block text-[10px] font-black uppercase text-slate-500">Options (séparées par virgules)</label>
+                       <input 
+                         type="text" 
+                         value={field.options}
+                         onChange={(e) => updateField(field.id, { options: e.target.value })}
+                         placeholder="Option A, Option B..."
+                         className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-xs font-bold text-slate-900 outline-none focus:border-[#3B52E8]"
+                       />
+                     </div>
+                   )}
+
+                   <div className="flex items-center gap-2 h-[36px] px-1">
+                     <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                       <input 
+                         type="checkbox" 
+                         checked={field.required} 
+                         onChange={(e) => updateField(field.id, { required: e.target.checked })} 
+                         className="rounded text-[#3B52E8] focus:ring-0 w-4 h-4" 
+                       />
+                       <span className="text-xs font-bold text-slate-700">Obligatoire</span>
+                     </label>
+                   </div>
+
+                   <button 
+                     onClick={() => removeField(field.id)}
+                     type="button"
+                     className="w-9 h-9 flex items-center justify-center text-rose-500 hover:bg-rose-100 rounded-lg transition cursor-pointer"
+                     title="Supprimer"
+                   >
+                     <FiTrash2 size={16} />
+                   </button>
+                 </div>
+               ))}
+
+               {customFields.length === 0 && (
+                 <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-[#F8FAFC]/50 text-slate-400 space-y-2">
+                   <div className="w-10 h-10 bg-white rounded-xl mx-auto flex items-center justify-center text-slate-300 shadow-xs">
+                     <FiFileText size={20} />
+                   </div>
+                   <p className="text-xs font-bold text-slate-600">Aucun champ personnalisé ajouté</p>
+                   <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                     Utilisez les boutons ci-dessus pour ajouter des champs spécifiques.
+                   </p>
+                 </div>
+               )}
+             </div>
           </div>
 
-          <div className="mt-8 pt-8 border-t border-stroke dark:border-white/10 flex items-center justify-between">
-            <div>
-               <h3 className="text-xl font-bold text-dark dark:text-white">Nombre de jours calculé</h3>
-               <p className="text-sm text-body-color">Basé sur vos dates de début et de fin</p>
-            </div>
-            <div className="text-4xl font-black text-primary bg-primary/10 w-20 h-20 rounded-2xl flex items-center justify-center border-2 border-primary/20 shadow-lg shadow-primary/10">
-              {attendanceDays}
-            </div>
+          {/* Action Next Step */}
+          <div className="pt-4 flex justify-between items-center border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setActiveTab(1)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+            >
+              <FiArrowLeft size={15} /> <span>Retour</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={goToStep3}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FF6500] hover:bg-[#e05900] text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md shadow-[#FF6500]/20 hover:scale-[1.01] active:scale-95"
+            >
+              <span>Suivant : Conception Pass Visuel</span>
+              <FiArrowRight size={16} />
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* STEP 3: DESIGNER VISUEL DU BADGE / PASS QR CODE */}
+      {activeTab === 3 && (
+        <div className="bg-gradient-to-b from-[#0B1736] to-[#0A0F1D] p-6 sm:p-8 rounded-[28px] text-white shadow-2xl border border-slate-800 space-y-5 animate-in fade-in duration-300">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-700/60 gap-4">
+             <div className="flex items-center gap-3">
+               <button 
+                 type="button"
+                 onClick={() => setActiveTab(2)}
+                 className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                 title="Retour à l'étape 2"
+               >
+                 <FiArrowLeft size={18} />
+               </button>
+               <div>
+                 <h3 className="text-lg font-black uppercase tracking-tight text-white">Étape 3 : Studio Pass Visuel & Badging</h3>
+                 <p className="text-xs text-slate-300 font-medium">Ajustez votre image de fond, QR Code et zones de texte dynamiques</p>
+               </div>
+             </div>
+
+             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 text-xs font-bold text-amber-300 border border-amber-300/20 backdrop-blur-md self-start sm:self-auto">
+               <BsShieldCheck size={15} /> <span>Haute Définition 300 DPI</span>
+             </div>
+          </div>
+
+          {/* Poster Editor Canvas Container */}
+          <div className="min-h-[720px] max-w-full overflow-hidden rounded-2xl border border-slate-800 bg-[#0A0F1D] shadow-inner">
+            <PosterEditor 
+              onSave={handleSave} 
+              loading={loading} 
+              customFields={customFields}
+              saveText="Finaliser & Créer l'Événement"
+            />
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="h-[800px] mb-12 sticky top-0 z-10 max-w-full overflow-x-hidden">
-        <PosterEditor onSave={handleSave} loading={loading} />
-      </div>
-
-      {loading && <FullPageLoader message="Création de l'événement en cours..." />}
+      {/* Full Screen Loading Spinner overlay */}
+      {loading && <FullPageLoader message="Enregistrement et génération du pass en cours..." />}
     </div>
   );
 }

@@ -2,8 +2,8 @@ import '../styles/globals.css';
 import { Providers } from './Providers';
 
 export const metadata = {
-  title: 'InviteManager - Gestion d\'Invitations & Badges',
-  description: 'Générez des invitations personnalisées et des badges pour vos événements.',
+  title: 'ThaborSolution - Gestion d\'Invitations & Badges',
+  description: 'Générez des invitations personnalisées et des badges pour vos événements avec ThaborSolution.',
 };
 
 export default function RootLayout({ children }) {

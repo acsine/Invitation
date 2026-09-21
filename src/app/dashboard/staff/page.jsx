@@ -5,12 +5,15 @@ import Loader from '@/components/Loader';
 import Button from '@/components/ui/Button';
 import { FiUsers, FiUserPlus, FiTrash2, FiMail, FiLock, FiUser } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import DeleteConfirmationModal from '@/components/dashboard/DeleteConfirmationModal';
 
 export default function StaffManagement() {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deletingMember, setDeletingMember] = useState(null);
+  const [deletingLoading, setDeletingLoading] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
   useEffect(() => {
@@ -56,19 +59,23 @@ export default function StaffManagement() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce membre ?')) return;
+  const handleConfirmDelete = async () => {
+    if (!deletingMember) return;
+    setDeletingLoading(true);
 
     try {
-      const res = await fetch(`/api/dashboard/staff?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/dashboard/staff?id=${deletingMember.id}`, { method: 'DELETE' });
       if (res.ok) {
         toast.success('Membre supprimé');
+        setDeletingMember(null);
         fetchStaff();
       } else {
         toast.error('Erreur lors de la suppression');
       }
     } catch (error) {
       toast.error('Erreur serveur');
+    } finally {
+      setDeletingLoading(false);
     }
   };
 
@@ -120,8 +127,9 @@ export default function StaffManagement() {
                   </td>
                   <td className="p-8 text-right">
                     <button 
-                      onClick={() => handleDelete(member.id)}
-                      className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                      onClick={() => setDeletingMember(member)}
+                      className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-all cursor-pointer"
+                      title="Supprimer l'agent"
                     >
                       <FiTrash2 size={18} />
                     </button>
@@ -221,6 +229,16 @@ export default function StaffManagement() {
           </div>
         </div>
       )}
+
+      {/* Delete Staff Modal */}
+      <DeleteConfirmationModal
+        isOpen={!!deletingMember}
+        onClose={() => setDeletingMember(null)}
+        onConfirm={handleConfirmDelete}
+        title="Supprimer l'agent"
+        itemName={deletingMember?.name || deletingMember?.email}
+        loading={deletingLoading}
+      />
     </div>
   );
 }

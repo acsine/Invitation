@@ -189,9 +189,9 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
   const isPhoto = shapeProps.type === 'PHOTO';
   const subType = shapeProps.subType || 'rect';
 
-  // Clipping function based on shape
+  // Clipping function based on shape and custom corner radius
   const getClipFunc = (ctx) => {
-    const { width, height } = shapeProps;
+    const { width, height, cornerRadius = 0 } = shapeProps;
     if (subType === 'circle') {
       ctx.arc(width / 2, height / 2, width / 2, 0, Math.PI * 2, false);
     } else if (subType === 'diamond') {
@@ -201,7 +201,22 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
       ctx.lineTo(0, height / 2);
       ctx.closePath();
     } else {
-      ctx.rect(0, 0, width, height);
+      const r = Math.min(cornerRadius || 0, width / 2, height / 2);
+      if (r > 0) {
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(width - r, 0);
+        ctx.quadraticCurveTo(width, 0, width, r);
+        ctx.lineTo(width, height - r);
+        ctx.quadraticCurveTo(width, height, width - r, height);
+        ctx.lineTo(r, height);
+        ctx.quadraticCurveTo(0, height, 0, height - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.closePath();
+      } else {
+        ctx.rect(0, 0, width, height);
+      }
     }
   };
 
@@ -244,7 +259,7 @@ const DynamicArea = ({ shapeProps, isSelected, onSelect, onChange }) => {
           stroke={isPhoto ? '#3772FF' : '#EF4444'}
           strokeWidth={2}
           dash={[5, 5]}
-          cornerRadius={subType === 'circle' ? shapeProps.width : 0}
+          cornerRadius={subType === 'circle' ? shapeProps.width : (shapeProps.cornerRadius || 0)}
         />
 
         {/* Clipping Area (Photoshop Mask Style) */}
@@ -405,12 +420,12 @@ export default function PosterEditor({ initialData = {}, onSave, onChange, loadi
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141416] border border-[#23262F] rounded-3xl overflow-hidden max-w-full">
+    <div className="flex flex-col h-full bg-slate-950 border border-slate-200/80 rounded-3xl overflow-hidden max-w-full shadow-lg">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between p-3 bg-[#1A1A1D] border-b border-[#23262F] gap-2">
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-sm font-bold rounded-lg cursor-pointer hover:bg-opacity-90 transition">
-            <FiUpload size={16} />
+      <div className="flex items-center justify-between p-3 bg-slate-900 border-b border-slate-800 gap-3 overflow-x-auto custom-scrollbar shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          <label className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm">
+            <FiUpload size={14} />
             <span>Fond</span>
             <input type="file" onChange={(e) => {
               const file = e.target.files[0];
@@ -421,52 +436,69 @@ export default function PosterEditor({ initialData = {}, onSave, onChange, loadi
               }
             }} hidden accept="image/*" />
           </label>
-          <button onClick={() => setBgImageSrc(null)} className="p-1.5 text-gray-500 hover:text-white transition" title="Supprimer le fond">
-            <FiMinus size={18} />
+          <button onClick={() => setBgImageSrc(null)} className="p-1.5 text-slate-400 hover:text-white transition-colors" title="Supprimer le fond">
+            <FiMinus size={16} />
           </button>
 
-          <div className="w-px h-6 bg-[#353945] mx-1" />
+          <div className="w-px h-6 bg-slate-800 mx-1" />
 
-          <button onClick={() => addElement('text')} className="flex items-center gap-2 p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945] transition" title="Texte">
-            <FiType size={18} />
-            <span className="text-[10px] font-black uppercase">Texte Statique</span>
+          <button onClick={() => addElement('text')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all text-xs font-bold" title="Texte">
+            <FiType size={16} />
+            <span className="text-[11px] font-bold uppercase">Texte Statique</span>
           </button>
-          <button onClick={() => addElement('rect')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Rectangle"><FiSquare size={18} /></button>
-          <button onClick={() => addElement('circle')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Cercle"><FiCircle size={18} /></button>
-          <button onClick={() => addElement('star')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Étoile"><FiStar size={18} /></button>
-          <button onClick={() => addElement('polygon')} className="p-2 bg-[#23262F] text-white rounded-lg hover:bg-[#353945]" title="Polygone"><FiHexagon size={18} /></button>
+          <button onClick={() => addElement('rect')} className="p-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700" title="Rectangle"><FiSquare size={16} /></button>
+          <button onClick={() => addElement('circle')} className="p-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700" title="Cercle"><FiCircle size={16} /></button>
+          <button onClick={() => addElement('star')} className="p-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700" title="Étoile"><FiStar size={16} /></button>
+          <button onClick={() => addElement('polygon')} className="p-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700" title="Polygone"><FiHexagon size={16} /></button>
           
-          <div className="w-px h-6 bg-[#353945] mx-1" />
+          <div className="w-px h-6 bg-slate-800 mx-1" />
 
-          <button onClick={() => addDynamicArea('NAME')} className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition text-xs font-bold">
+          <button onClick={() => addDynamicArea('NAME')} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded-xl hover:bg-rose-500/20 transition text-xs font-bold">
             <FiUser size={14} /> NOM
           </button>
-          <button onClick={() => addDynamicArea('PHOTO')} className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition text-xs font-bold">
+          <button onClick={() => addDynamicArea('PHOTO')} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-xl hover:bg-blue-500/20 transition text-xs font-bold">
             <FiCamera size={14} /> PHOTO
           </button>
-          <button onClick={() => addDynamicArea('QRCODE')} className="flex items-center gap-2 px-3 py-1.5 bg-gray-500/10 text-gray-400 border border-gray-500/20 rounded-lg hover:bg-gray-500/20 transition text-xs font-bold">
+          <button onClick={() => addDynamicArea('QRCODE')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl hover:bg-slate-700 transition text-xs font-bold">
             <MdQrCode size={14} /> QR CODE
           </button>
 
-          {customFields.map(field => (
+          {customFields.map((field, idx) => (
             <button 
-              key={field.name}
-              onClick={() => addDynamicArea('FIELD', field.name)} 
-              className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg hover:bg-green-500/20 transition text-xs font-bold"
+              key={field.name || field.id || idx}
+              onClick={() => addDynamicArea('FIELD', field.name || `field_${idx}`)} 
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/20 transition text-xs font-bold"
             >
-              <FiSettings size={14} /> {field.label.toUpperCase()}
+              <FiSettings size={14} /> {(field.label || field.name || `CHAMP ${idx + 1}`).toUpperCase()}
             </button>
           ))}
         </div>
 
-        <Button 
-          onClick={() => onSave({ backgroundImageUrl: bgImageSrc, zones: elements, designWidth: stageSize.width, designHeight: stageSize.height })} 
-          className="px-6 py-2 rounded-xl h-10"
-          variant="danger"
-          loading={loading}
-        >
-          {saveText || (initialData.id ? 'Enregistrer les modifications' : 'Créer l\'événement')}
-        </Button>
+        <div className="shrink-0 ml-auto">
+          <Button 
+            onClick={() => {
+              let finalBg = bgImageSrc;
+              if (!finalBg && stageRef.current) {
+                try {
+                  finalBg = stageRef.current.toDataURL({ pixelRatio: 1.5 });
+                } catch (e) {
+                  console.warn('Canvas export warning:', e);
+                }
+              }
+              onSave({ 
+                backgroundImageUrl: finalBg || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 
+                zones: elements, 
+                designWidth: stageSize.width, 
+                designHeight: stageSize.height 
+              });
+            }} 
+            className="px-5 py-2 rounded-xl h-9 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+            variant="primary"
+            loading={loading}
+          >
+            {saveText || (initialData.id ? 'Enregistrer' : 'Créer l\'événement')}
+          </Button>
+        </div>
       </div>
 
       <div className="flex-grow flex flex-col lg:flex-row overflow-hidden bg-[#0E0E0F]">
@@ -525,22 +557,87 @@ export default function PosterEditor({ initialData = {}, onSave, onChange, loadi
               </div>
 
               {elements.find(el => el.id === selectedId)?.isDynamic && (
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase">Forme de la zone</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['rect', 'circle', 'diamond'].map(s => (
-                      <button 
-                        key={s}
-                        onClick={() => {
-                          const next = elements.map(el => el.id === selectedId ? { ...el, subType: s } : el);
-                          setElements(next);
-                        }}
-                        className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition ${elements.find(el => el.id === selectedId)?.subType === s ? 'bg-primary border-primary text-white' : 'bg-[#23262F] border-[#353945] text-gray-400'}`}
-                      >
-                        {s.toUpperCase()}
-                      </button>
-                    ))}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase">Forme de la zone</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['rect', 'circle', 'diamond'].map(s => (
+                        <button 
+                          key={s}
+                          onClick={() => {
+                            const next = elements.map(el => el.id === selectedId ? { ...el, subType: s } : el);
+                            setElements(next);
+                          }}
+                          className={`py-2 px-1 text-[10px] font-bold rounded-lg border transition ${elements.find(el => el.id === selectedId)?.subType === s ? 'bg-[#3772FF] border-[#3772FF] text-white' : 'bg-[#23262F] border-[#353945] text-gray-400'}`}
+                        >
+                          {s.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
+                  {/* Corner Radius (Arrondi des Bordures) Control */}
+                  {(elements.find(el => el.id === selectedId)?.subType !== 'circle' && elements.find(el => el.id === selectedId)?.subType !== 'diamond') && (
+                    <div className="space-y-2 pt-2 border-t border-[#353945]/50">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          Arrondi des bordures (Rayon)
+                        </label>
+                        <span className="text-xs font-bold text-[#3772FF]">
+                          {elements.find(el => el.id === selectedId)?.cornerRadius || 0}px
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="80" 
+                          value={elements.find(el => el.id === selectedId)?.cornerRadius || 0} 
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            const next = elements.map(el => el.id === selectedId ? { ...el, cornerRadius: val } : el);
+                            setElements(next);
+                          }}
+                          className="w-full h-2 bg-[#23262F] rounded-lg appearance-none cursor-pointer accent-[#3772FF]"
+                        />
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="200" 
+                          value={elements.find(el => el.id === selectedId)?.cornerRadius || 0} 
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            const next = elements.map(el => el.id === selectedId ? { ...el, cornerRadius: val } : el);
+                            setElements(next);
+                          }}
+                          className="w-16 bg-[#23262F] border border-[#353945] rounded-lg p-1.5 text-center text-white text-xs outline-none focus:border-[#3772FF]"
+                        />
+                      </div>
+
+                      {/* Quick Presets Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 pt-1">
+                        {[
+                          { label: '0px', val: 0 },
+                          { label: '12px', val: 12 },
+                          { label: '24px', val: 24 },
+                          { label: '40px', val: 40 },
+                        ].map((preset) => (
+                          <button
+                            key={preset.val}
+                            type="button"
+                            onClick={() => {
+                              const next = elements.map(el => el.id === selectedId ? { ...el, cornerRadius: preset.val } : el);
+                              setElements(next);
+                            }}
+                            className={`py-1 text-[9px] font-bold rounded-md border transition ${elements.find(el => el.id === selectedId)?.cornerRadius === preset.val ? 'bg-[#3772FF] border-[#3772FF] text-white' : 'bg-[#23262F] border-[#353945] text-gray-400 hover:text-white'}`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -709,6 +806,68 @@ export default function PosterEditor({ initialData = {}, onSave, onChange, loadi
                             }} />
                           </div>
                         </div>
+
+                        {/* Corner Radius for Static Rectangles */}
+                        {elements.find(el => el.id === selectedId)?.type === 'rect' && (
+                          <div className="space-y-2 pt-2 border-t border-[#353945]/50">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                Arrondi des bordures (Rayon)
+                              </label>
+                              <span className="text-xs font-bold text-[#3772FF]">
+                                {elements.find(el => el.id === selectedId)?.cornerRadius || 0}px
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <input 
+                                type="range" 
+                                min="0" 
+                                max="80" 
+                                value={elements.find(el => el.id === selectedId)?.cornerRadius || 0} 
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0;
+                                  const next = elements.map(el => el.id === selectedId ? { ...el, cornerRadius: val } : el);
+                                  setElements(next);
+                                }}
+                                className="w-full h-2 bg-[#23262F] rounded-lg appearance-none cursor-pointer accent-[#3772FF]"
+                              />
+                              <input 
+                                type="number" 
+                                min="0" 
+                                max="200" 
+                                value={elements.find(el => el.id === selectedId)?.cornerRadius || 0} 
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value) || 0;
+                                  const next = elements.map(el => el.id === selectedId ? { ...el, cornerRadius: val } : el);
+                                  setElements(next);
+                                }}
+                                className="w-16 bg-[#23262F] border border-[#353945] rounded-lg p-1.5 text-center text-white text-xs outline-none focus:border-[#3772FF]"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-1.5 pt-1">
+                              {[
+                                { label: '0px', val: 0 },
+                                { label: '12px', val: 12 },
+                                { label: '24px', val: 24 },
+                                { label: '40px', val: 40 },
+                              ].map((preset) => (
+                                <button
+                                  key={preset.val}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = elements.map(el => el.id === selectedId ? { ...el, cornerRadius: preset.val } : el);
+                                    setElements(next);
+                                  }}
+                                  className={`py-1 text-[9px] font-bold rounded-md border transition ${elements.find(el => el.id === selectedId)?.cornerRadius === preset.val ? 'bg-[#3772FF] border-[#3772FF] text-white' : 'bg-[#23262F] border-[#353945] text-gray-400 hover:text-white'}`}
+                                >
+                                  {preset.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

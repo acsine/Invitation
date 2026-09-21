@@ -315,32 +315,32 @@ export default function GlobalBadgeExcelPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 pt-8 px-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-4">
            <AppLink 
              href={`/dashboard/events`} 
-             className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-gray-400 hover:text-primary hover:shadow-lg transition-all border border-gray-100"
+             className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all border border-slate-200/80 shrink-0"
            >
-              <FiArrowLeft size={24} />
+              <FiArrowLeft size={20} />
            </AppLink>
            <div>
               <div className="flex items-center gap-3 mb-1">
-                 <h2 className="text-3xl font-black text-gray-900 tracking-tight">Outil de Badges Excel</h2>
-                 <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-black uppercase rounded-full tracking-widest">Outil Indépendant</span>
+                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Outil de Badges Excel</h2>
+                 <span className="px-3 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px] font-extrabold uppercase rounded-full tracking-wider">Outil Indépendant</span>
               </div>
-              <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em]">Générez des badges sans créer d'événement</p>
+              <p className="text-slate-500 font-medium text-xs">Générez et imprimez des badges directement à partir d'un fichier Excel</p>
            </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={() => {
                 if (excelData.length > 0) startPreview();
-                else toast.error("Importez d'abord un fichier");
+                else toast.error("Importez d'abord un fichier Excel");
             }}
-            className="flex items-center gap-2 px-6 py-4 bg-gray-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-primary transition-all shadow-lg"
+            className="flex items-center gap-2 px-5 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-indigo-600 transition-all shadow-sm cursor-pointer"
           >
-            <FiZap size={16} />
+            <FiZap size={15} />
             Actualiser l'aperçu
           </button>
           
@@ -353,19 +353,19 @@ export default function GlobalBadgeExcelPage() {
           />
           <button 
             onClick={() => fileInputRef.current.click()}
-            className="flex items-center gap-2 px-6 py-4 bg-white border border-gray-100 rounded-2xl text-xs font-black text-gray-900 uppercase tracking-widest hover:border-primary hover:text-primary transition-all shadow-sm"
+            className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 uppercase tracking-wider hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm cursor-pointer"
           >
-            <FiUpload size={16} />
+            <FiUpload size={15} />
             {excelData.length > 0 ? `${excelData.length} lignes` : "Importer Excel"}
           </button>
 
-          <div className="flex items-center gap-4 p-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-2 px-4 py-2 border-r border-gray-100">
-                <FiGrid className="text-gray-400" />
+          <div className="flex flex-wrap items-center gap-2 p-1 bg-slate-50 rounded-xl border border-slate-200/80">
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+                <FiGrid className="text-slate-400" size={14} />
                 <select 
                   value={badgesPerPage}
                   onChange={(e) => setBadgesPerPage(parseInt(e.target.value))}
-                  className="bg-transparent text-xs font-black text-gray-900 uppercase tracking-widest outline-none"
+                  className="bg-transparent text-xs font-bold text-slate-800 uppercase outline-none cursor-pointer"
                 >
                   <option value="1">1 / Page</option>
                   <option value="2">2 / Page</option>
@@ -374,23 +374,25 @@ export default function GlobalBadgeExcelPage() {
                   <option value="10">10 / Page</option>
                 </select>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 border-r border-gray-100">
-                <FiRotateCcw className="text-gray-400" />
+            <div className="w-px h-4 bg-slate-200" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+                <FiRotateCcw className="text-slate-400" size={14} />
                 <select 
                   value={badgeRotation}
                   onChange={(e) => setBadgeRotation(parseInt(e.target.value))}
-                  className="bg-transparent text-xs font-black text-gray-900 uppercase tracking-widest outline-none"
+                  className="bg-transparent text-xs font-bold text-slate-800 uppercase outline-none cursor-pointer"
                 >
                   <option value="0">0°</option>
                   <option value="90">90°</option>
                 </select>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2">
-                <FiFileText className="text-gray-400" />
+            <div className="w-px h-4 bg-slate-200" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5">
+                <FiFileText className="text-slate-400" size={14} />
                 <select 
                   value={pdfOrientation}
                   onChange={(e) => setPdfOrientation(e.target.value)}
-                  className="bg-transparent text-xs font-black text-gray-900 uppercase tracking-widest outline-none"
+                  className="bg-transparent text-xs font-bold text-slate-800 uppercase outline-none cursor-pointer"
                 >
                   <option value="p">Portrait</option>
                   <option value="l">Paysage</option>

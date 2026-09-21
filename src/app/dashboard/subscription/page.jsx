@@ -18,7 +18,11 @@ export default function SubscriptionPage() {
     fetch('/api/plans')
       .then(res => res.json())
       .then(data => {
-        setPlans(data);
+        setPlans(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setPlans([]);
         setLoading(false);
       });
   }, []);

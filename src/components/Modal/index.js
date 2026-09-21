@@ -43,16 +43,17 @@ const Modal = ({
   if (!mounted || !visible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-900/40 dark:bg-slate-950/70 backdrop-blur-md p-4 sm:p-6 animate-fadeIn">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200">
       <div className={cn("relative w-full max-w-2xl animate-in zoom-in-95 duration-200", outerClassName)}>
         <OutsideClickHandler onOutsideClick={disable ? () => {} : onClose}>
-          <div className={cn("relative rounded-2xl glass-card bg-white/90 dark:bg-slate-900/90 p-6 sm:p-10 shadow-2xl border border-white/60 dark:border-slate-800", containerClassName)}>
+          <div className={cn("relative rounded-3xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800", containerClassName)}>
             {children}
             {!disable && (
               <button 
                 type="button"
-                className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all" 
+                className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer" 
                 onClick={onClose}
+                title="Fermer"
               >
                 <FiX size={18} />
               </button>

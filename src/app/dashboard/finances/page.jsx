@@ -6,31 +6,79 @@ import cn from 'classnames';
 import { FiTrendingUp, FiClock, FiCheckCircle, FiXCircle, FiInfo } from 'react-icons/fi';
 import WithdrawalForm from '@/components/dashboard/WithdrawalForm';
 
+import { neon } from '@neondatabase/serverless';
+
 export default async function FinancesPage() {
   const session = await getServerSession(authOptions);
   
   if (!session) return null;
 
-  const payments = await prisma.payment.findMany({
-    where: { 
-      guest: { 
-        event: { userId: session.user.id } 
-      }, 
-      status: 'CONFIRMED' 
-    },
-  });
+  let payments = [];
+  let withdrawals = [];
+  const dbUrl = process.env.DATABASE_URL || '';
 
-  const totalEarnings = payments.reduce((acc, curr) => acc + curr.netAmount, 0);
-  const totalCommission = payments.reduce((acc, curr) => acc + curr.commission, 0);
+  try {
+    if (dbUrl.includes('neon.tech')) {
+      const sql = neon(dbUrl);
+      const paymentRows = await sql`
+        SELECT p.id, p."netAmount", p.commission, p.status
+        FROM "Payment" p
+        JOIN "Guest" g ON g.id = p."guestId"
+        JOIN "Event" e ON e.id = g."eventId"
+        WHERE e."userId" = ${session.user.id} AND p.status = 'CONFIRMED'
+      `;
+      payments = paymentRows;
 
-  const withdrawals = await prisma.withdrawalRequest.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
-  });
+      const withdrawalRows = await sql`
+        SELECT id, amount, status, "createdAt"
+        FROM "WithdrawalRequest"
+        WHERE "userId" = ${session.user.id}
+        ORDER BY "createdAt" DESC
+      `;
+      withdrawals = withdrawalRows;
+    } else {
+      payments = await prisma.payment.findMany({
+        where: { 
+          guest: { 
+            event: { userId: session.user.id } 
+          }, 
+          status: 'CONFIRMED' 
+        },
+      });
+
+      withdrawals = await prisma.withdrawalRequest.findMany({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+  } catch (err) {
+    console.error('Finances query error, fallback:', err);
+    try {
+      const sql = neon(dbUrl);
+      payments = await sql`
+        SELECT p.id, p."netAmount", p.commission, p.status
+        FROM "Payment" p
+        JOIN "Guest" g ON g.id = p."guestId"
+        JOIN "Event" e ON e.id = g."eventId"
+        WHERE e."userId" = ${session.user.id} AND p.status = 'CONFIRMED'
+      `;
+      withdrawals = await sql`
+        SELECT id, amount, status, "createdAt"
+        FROM "WithdrawalRequest"
+        WHERE "userId" = ${session.user.id}
+        ORDER BY "createdAt" DESC
+      `;
+    } catch (e) {
+      console.error('Neon HTTP fallback failed:', e);
+    }
+  }
+
+  const totalEarnings = payments.reduce((acc, curr) => acc + (Number(curr.netAmount) || 0), 0);
+  const totalCommission = payments.reduce((acc, curr) => acc + (Number(curr.commission) || 0), 0);
 
   const totalWithdrawn = withdrawals
     .filter(w => w.status === 'COMPLETED' || w.status === 'PENDING')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+    .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
 
   const availableBalance = Math.max(0, totalEarnings - totalWithdrawn);
 

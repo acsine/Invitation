@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { FiCheckCircle, FiShield, FiPrinter, FiZap, FiCheck, FiArrowRight, FiSmartphone, FiAward, FiShare2 } from 'react-icons/fi';
+import AppLink from '@/components/AppLink';
 import { BsQrCode, BsStars } from 'react-icons/bs';
 
 export default function BadgeShowcase() {
@@ -81,10 +82,10 @@ export default function BadgeShowcase() {
           </div>
 
           <div className="pt-6 border-t border-slate-100">
-            <a href="/auth/register" className="w-full btn-edu-blue py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md border-none">
+            <AppLink href="/auth/register" className="w-full btn-edu-blue py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md border-none">
               <span>Créer des Pass Digitaux</span>
               <FiArrowRight size={14} />
-            </a>
+            </AppLink>
           </div>
         </div>
 
@@ -148,10 +149,10 @@ export default function BadgeShowcase() {
           </div>
 
           <div className="pt-6 border-t border-slate-100">
-            <a href="/auth/register" className="w-full btn-edu-orange py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 border-none">
+            <AppLink href="/auth/register" className="w-full btn-edu-orange py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 border-none">
               <span>Générer mes Badges PDF</span>
               <FiArrowRight size={14} />
-            </a>
+            </AppLink>
           </div>
         </div>
 
@@ -211,10 +212,10 @@ export default function BadgeShowcase() {
           </div>
 
           <div className="pt-6 border-t border-slate-100">
-            <a href="/auth/register" className="w-full btn-edu-blue py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md border-none">
+            <AppLink href="/auth/register" className="w-full btn-edu-blue py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md border-none">
               <span>Créer des Badges VIP</span>
               <FiArrowRight size={14} />
-            </a>
+            </AppLink>
           </div>
         </div>
 
