@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, use } from 'react';
+import React, { useState, useEffect, useRef, useCallback, use } from 'react';
 import cn from 'classnames';
 import Loader from '@/components/Loader';
 import Button from '@/components/ui/Button';
@@ -242,8 +242,86 @@ export default function InvitePage({ params }) {
   const [duplicateGuest, setDuplicateGuest] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
+  const [registeredGuestId, setRegisteredGuestId] = useState(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const containerRef = useRef();
   const stageRef = useRef();
+
+  const resolveGuestName = useCallback(() => {
+    const trimmed = String(guestName || '').trim();
+    return trimmed || 'Invité';
+  }, [guestName]);
+
+  const downloadBadge = useCallback(() => {
+    if (!stageRef.current || !event) return;
+    const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+    const link = document.createElement('a');
+    link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
+    link.href = dataUrl;
+    link.click();
+  }, [event]);
+
+  const registerGuest = useCallback(async ({ saveToCloud = false, uploadBadge = false } = {}) => {
+    if (registeredGuestId) {
+      return { ok: true, guestId: registeredGuestId, alreadyRegistered: true };
+    }
+    if (!event?.id) {
+      return { ok: false, error: 'Événement non chargé' };
+    }
+
+    const phoneRes = validatePhoneNum(guestPhone);
+    const phoneForApi = phoneRes.isValid ? phoneRes.formatted : guestPhone;
+
+    const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
+    const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1, color: { dark: '#0b1736', light: '#ffffff' } });
+    setQrCodeData(realQrUrl);
+
+    await new Promise(r => setTimeout(r, 120));
+
+    const payload = {
+      id: tempId,
+      eventId: event.id,
+      name: resolveGuestName(),
+      phone: phoneForApi,
+      photoUrl: guestPhoto,
+      additionalData: JSON.stringify(additionalData),
+      saveToCloud,
+    };
+
+    if (uploadBadge && stageRef.current) {
+      payload.generatedImageUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+    }
+
+    const res = await fetch('/api/guests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const resData = await res.json();
+
+    if (res.ok) {
+      const guestId = resData.id || tempId;
+      setRegisteredGuestId(guestId);
+      return { ok: true, guest: resData, guestId };
+    }
+
+    if (res.status === 409 && resData.error === 'DOUBLON') {
+      setDuplicateGuest(resData.guest);
+      const guestId = resData.guest?.id;
+      if (guestId) setRegisteredGuestId(guestId);
+      return { ok: false, duplicate: true, guest: resData.guest };
+    }
+
+    return { ok: false, error: resData.error || 'Erreur lors de l\'inscription' };
+  }, [
+    registeredGuestId,
+    event,
+    guestPhone,
+    guestPhoto,
+    additionalData,
+    resolveGuestName,
+  ]);
 
   const handlePhoneChange = (e) => {
     const rawVal = e.target.value;
@@ -366,8 +444,8 @@ export default function InvitePage({ params }) {
   };
 
   const validateStep1 = () => {
-    if (!guestName && !guestPhoto) {
-      toast.error('Veuillez saisir votre nom complet');
+    if (!String(guestName || '').trim() && !guestPhoto) {
+      toast.error('Veuillez saisir votre nom complet ou ajouter une photo');
       return false;
     }
     
@@ -399,9 +477,33 @@ export default function InvitePage({ params }) {
     }
   };
 
-  const handleGoToStep3 = () => {
+  const handleGoToStep3 = async () => {
     if (!validateStep1()) return;
-    setCurrentStep(3);
+    if (registeredGuestId) {
+      setCurrentStep(3);
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const result = await registerGuest({ saveToCloud: false });
+      if (result.ok) {
+        setCurrentStep(3);
+        toast.success('Inscription enregistrée ! Votre pass est prêt.');
+        return;
+      }
+      if (result.duplicate) {
+        setCurrentStep(3);
+        toast.error('Vous êtes déjà inscrit à cet événement');
+        return;
+      }
+      toast.error(result.error || 'Erreur lors de l\'inscription');
+    } catch (error) {
+      console.error(error);
+      toast.error('Erreur lors de l\'inscription');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -412,56 +514,25 @@ export default function InvitePage({ params }) {
     setDuplicateGuest(null);
 
     try {
-      // If already on step 3, directly download the generated badge
-      if (currentStep === 3 && stageRef.current) {
-        const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
-        const link = document.createElement('a');
-        link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
-        link.href = dataUrl;
-        link.click();
-        toast.success('Invitation téléchargée avec succès !');
-        setSharingPlatform(null);
-        return;
+      let result = null;
+      if (!registeredGuestId) {
+        result = await registerGuest({ saveToCloud: false });
+        if (result.duplicate) {
+          toast.error('Vous êtes déjà inscrit à cet événement');
+        } else if (!result.ok) {
+          toast.error(result.error || 'Erreur lors de l\'inscription');
+          return;
+        } else if (currentStep !== 3) {
+          setCurrentStep(3);
+        }
+        if (result.ok && !result.alreadyRegistered) {
+          await new Promise(r => setTimeout(r, 150));
+        }
       }
 
-      const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
-      const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1, color: { dark: '#0b1736', light: '#ffffff' } });
-      setQrCodeData(realQrUrl);
-
-      await new Promise(r => setTimeout(r, 120));
-
-      const dataUrl = stageRef.current ? stageRef.current.toDataURL({ pixelRatio: 2.5 }) : '';
-
-      const res = await fetch(`/api/guests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: tempId,
-          eventId: event.id,
-          name: guestName,
-          phone: guestPhone,
-          photoUrl: guestPhoto,
-          additionalData: JSON.stringify(additionalData),
-          saveToCloud: false
-        }),
-      });
-
-      const resData = await res.json();
-
-      if (res.ok) {
-        if (dataUrl) {
-          const link = document.createElement('a');
-          link.download = `invitation_${event.name.replace(/\s+/g, '_')}.png`;
-          link.href = dataUrl;
-          link.click();
-        }
-        setCurrentStep(3);
-        toast.success('Invitation créée et téléchargée avec succès !');
-      } else if (res.status === 409 && resData.error === 'DOUBLON') {
-        setDuplicateGuest(resData.guest);
-        toast.error(resData.message || 'Vous êtes déjà inscrit à cet événement');
-      } else {
-        toast.error(resData.error || 'Erreur lors de l\'inscription');
+      if (stageRef.current) {
+        downloadBadge();
+        toast.success('Invitation téléchargée avec succès !');
       }
     } catch (error) {
       console.error(error);
@@ -476,52 +547,20 @@ export default function InvitePage({ params }) {
     setDuplicateGuest(null);
 
     try {
-      // If not yet on step 3, register the guest first
-      if (currentStep !== 3) {
+      if (!registeredGuestId) {
         if (!validateStep1()) {
           setSharingPlatform(null);
           return;
         }
 
-        const tempId = `GUEST_${Math.random().toString(36).substring(2, 11)}`;
-        const realQrUrl = await QRCode.toDataURL(tempId, { margin: 1, color: { dark: '#0b1736', light: '#ffffff' } });
-        setQrCodeData(realQrUrl);
-
-        await new Promise(r => setTimeout(r, 120));
-
-        let stageUrl = '';
-        if (stageRef.current) {
-          stageUrl = stageRef.current.toDataURL({ pixelRatio: 2.5 });
+        const result = await registerGuest({ saveToCloud: true, uploadBadge: true });
+        if (result.duplicate) {
+          toast.error('Vous êtes déjà inscrit à cet événement');
+        } else if (!result.ok) {
+          throw new Error(result.error);
+        } else if (currentStep !== 3) {
+          setCurrentStep(3);
         }
-
-        const res = await fetch(`/api/guests`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: tempId,
-            eventId: event.id,
-            name: guestName,
-            phone: guestPhone,
-            photoUrl: guestPhoto,
-            additionalData: JSON.stringify(additionalData),
-            generatedImageUrl: stageUrl,
-            saveToCloud: true
-          }),
-        });
-
-        const resData = await res.json();
-
-        if (!res.ok) {
-          if (res.status === 409 && resData.error === 'DOUBLON') {
-            setDuplicateGuest(resData.guest);
-            toast.error(resData.message || 'Vous êtes déjà inscrit');
-            setSharingPlatform(null);
-            return;
-          }
-          throw new Error(resData.error);
-        }
-
-        setCurrentStep(3);
       }
 
       // Short invitation text with link pre-filled directly in the message
@@ -1126,10 +1165,20 @@ export default function InvitePage({ params }) {
                   <button
                     type="button"
                     onClick={handleGoToStep3}
-                    className="w-full sm:w-2/3 py-4 px-6 rounded-2xl bg-gradient-to-r from-[#3B52E8] via-[#4F6BFF] to-[#3B52E8] hover:opacity-95 active:scale-[0.99] text-white font-black text-sm shadow-xl shadow-[#3B52E8]/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    disabled={isRegistering}
+                    className="w-full sm:w-2/3 py-4 px-6 rounded-2xl bg-gradient-to-r from-[#3B52E8] via-[#4F6BFF] to-[#3B52E8] hover:opacity-95 active:scale-[0.99] text-white font-black text-sm shadow-xl shadow-[#3B52E8]/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
-                    <span>Valider mon Pass et Télécharger</span>
-                    <FiArrowRight size={18} />
+                    {isRegistering ? (
+                      <>
+                        <Loader className="!h-5 !w-5 !text-white" />
+                        <span>Enregistrement de votre inscription...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Valider mon Pass et Télécharger</span>
+                        <FiArrowRight size={18} />
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
