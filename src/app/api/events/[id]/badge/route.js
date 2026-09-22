@@ -26,13 +26,7 @@ export async function POST(request, { params }) {
     const { backgroundImageUrl, zones } = await request.json();
 
     let finalImageUrl = backgroundImageUrl;
-    if (backgroundImageUrl && backgroundImageUrl.startsWith('data:image')) {
-      if (!isConfigured) {
-        return NextResponse.json({ 
-          error: 'ImageKit non configuré. Veuillez ajouter vos clés dans le fichier .env' 
-        }, { status: 400 });
-      }
-
+    if (backgroundImageUrl && backgroundImageUrl.startsWith('data:image') && isConfigured) {
       try {
         const uploadResponse = await imagekit.upload({
           file: backgroundImageUrl,
@@ -41,10 +35,8 @@ export async function POST(request, { params }) {
         });
         finalImageUrl = uploadResponse.url;
       } catch (uploadError) {
-        console.error('ImageKit upload error:', uploadError);
-        return NextResponse.json({ 
-          error: 'Erreur d\'authentification ImageKit. Vérifiez vos clés dans le fichier .env' 
-        }, { status: 401 });
+        console.warn('ImageKit upload failed, keeping data URI:', uploadError?.message);
+        // Keep the base64 data URI as fallback
       }
     }
 
