@@ -857,99 +857,10 @@ export default function InvitePage({ params }) {
           </div>
         </div>
 
-        {/* Main 2-Column Grid */}
+        {/* Main 2-Column Grid — Form first (top on mobile), Preview second (bottom on mobile) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Pro Live Badge Preview Studio */}
-          <div className="lg:col-span-5 flex flex-col items-center lg:sticky lg:top-24 z-20">
-            <div className="w-full bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xl shadow-slate-900/5 flex flex-col items-center space-y-4">
-              <div className="w-full flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                    Aperçu du Pass Live
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200 font-mono">
-                  {stageSize.width} × {Math.round(stageSize.height)} px
-                </span>
-              </div>
-
-              {/* Stage Container */}
-              <div ref={containerRef} className="w-full flex justify-center items-center overflow-hidden rounded-2xl bg-slate-100/80 p-2 border border-slate-200/80 shadow-inner relative group">
-                <PosterRenderer
-                  event={event}
-                  guestName={guestName}
-                  guestPhoto={guestPhoto}
-                  photoPos={photoPos}
-                  photoZoom={photoZoom}
-                  onPhotoDrag={setPhotoPos}
-                  stageRef={stageRef}
-                  stageSize={stageSize}
-                  qrCodeData={qrCodeData}
-                />
-              </div>
-
-              {/* Interactive Helper Hint */}
-              <p className="text-[11px] text-slate-500 text-center font-medium flex items-center justify-center gap-1.5 px-2">
-                <FiInfo className="text-[#3B52E8] shrink-0" size={13} />
-                <span>Modifications synchronisées en temps réel sur le Pass</span>
-              </p>
-
-              {/* Pro Photo Adjustment Bar */}
-              {guestPhoto && (
-                <div className="w-full p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 space-y-3 animate-in fade-in duration-300">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                      <FiZoomIn size={14} className="text-[#3B52E8]" /> Échelle du portrait
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setPhotoZoom(prev => Math.max(0.6, parseFloat((prev - 0.1).toFixed(2))))}
-                        className="w-7 h-7 rounded-xl bg-white hover:bg-slate-200 text-slate-800 font-bold border border-slate-200 flex items-center justify-center text-xs cursor-pointer shadow-xs"
-                      >
-                        -
-                      </button>
-                      <span className="font-bold text-[#3B52E8] bg-[#3B52E8]/10 px-2.5 py-1 rounded-lg text-[11px] font-mono">
-                        {Math.round(photoZoom * 100)}%
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setPhotoZoom(prev => Math.min(2.5, parseFloat((prev + 0.1).toFixed(2))))}
-                        className="w-7 h-7 rounded-xl bg-white hover:bg-slate-200 text-slate-800 font-bold border border-slate-200 flex items-center justify-center text-xs cursor-pointer shadow-xs"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.5"
-                    step="0.05"
-                    value={photoZoom}
-                    onChange={(e) => setPhotoZoom(parseFloat(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B52E8]"
-                  />
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/80">
-                    <span className="flex items-center gap-1">
-                      <FiMove size={12} className="text-[#3B52E8]" /> Glissez la photo pour ajuster
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { setPhotoPos({ x: 0, y: 0 }); setPhotoZoom(1); }}
-                      className="text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <FiRefreshCw size={11} /> Réinitialiser
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column: Conversational & Human Guided Form */}
-          <div className="lg:col-span-7 bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-900/5">
+          {/* Form Column (appears first = top on mobile) */}
+          <div className="lg:col-span-7 lg:order-1 bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-900/5">
             {/* STEP 1: VOS COORDONNÉES */}
             {currentStep === 1 && (
               <div className="space-y-6 animate-in fade-in duration-300">
@@ -1355,6 +1266,95 @@ export default function InvitePage({ params }) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Preview Column: Pro Live Badge Preview Studio (appears second = bottom on mobile) */}
+          <div className="lg:col-span-5 lg:order-2 flex flex-col items-center lg:sticky lg:top-24 z-20">
+            <div className="w-full bg-white border border-slate-200/90 rounded-3xl p-5 shadow-xl shadow-slate-900/5 flex flex-col items-center space-y-4">
+              <div className="w-full flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                    Aperçu du Pass Live
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-full border border-slate-200 font-mono">
+                  {stageSize.width} × {Math.round(stageSize.height)} px
+                </span>
+              </div>
+
+              {/* Stage Container */}
+              <div ref={containerRef} className="w-full flex justify-center items-center overflow-hidden rounded-2xl bg-slate-100/80 p-2 border border-slate-200/80 shadow-inner relative group">
+                <PosterRenderer
+                  event={event}
+                  guestName={guestName}
+                  guestPhoto={guestPhoto}
+                  photoPos={photoPos}
+                  photoZoom={photoZoom}
+                  onPhotoDrag={setPhotoPos}
+                  stageRef={stageRef}
+                  stageSize={stageSize}
+                  qrCodeData={qrCodeData}
+                />
+              </div>
+
+              {/* Interactive Helper Hint */}
+              <p className="text-[11px] text-slate-500 text-center font-medium flex items-center justify-center gap-1.5 px-2">
+                <FiInfo className="text-[#3B52E8] shrink-0" size={13} />
+                <span>Modifications synchronisées en temps réel sur le Pass</span>
+              </p>
+
+              {/* Pro Photo Adjustment Bar */}
+              {guestPhoto && (
+                <div className="w-full p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 space-y-3 animate-in fade-in duration-300">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <FiZoomIn size={14} className="text-[#3B52E8]" /> Échelle du portrait
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPhotoZoom(prev => Math.max(0.6, parseFloat((prev - 0.1).toFixed(2))))}
+                        className="w-7 h-7 rounded-xl bg-white hover:bg-slate-200 text-slate-800 font-bold border border-slate-200 flex items-center justify-center text-xs cursor-pointer shadow-xs"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-[#3B52E8] bg-[#3B52E8]/10 px-2.5 py-1 rounded-lg text-[11px] font-mono">
+                        {Math.round(photoZoom * 100)}%
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPhotoZoom(prev => Math.min(2.5, parseFloat((prev + 0.1).toFixed(2))))}
+                        className="w-7 h-7 rounded-xl bg-white hover:bg-slate-200 text-slate-800 font-bold border border-slate-200 flex items-center justify-center text-xs cursor-pointer shadow-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.5"
+                    step="0.05"
+                    value={photoZoom}
+                    onChange={(e) => setPhotoZoom(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#3B52E8]"
+                  />
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/80">
+                    <span className="flex items-center gap-1">
+                      <FiMove size={12} className="text-[#3B52E8]" /> Glissez la photo pour ajuster
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setPhotoPos({ x: 0, y: 0 }); setPhotoZoom(1); }}
+                      className="text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <FiRefreshCw size={11} /> Réinitialiser
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>
