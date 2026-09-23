@@ -246,6 +246,9 @@ export default function InvitePage({ params }) {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSaspayLoading, setIsSaspayLoading] = useState(false);
   const [isPaidSuccess, setIsPaidSuccess] = useState(false);
+  const [paymentMethodChoice, setPaymentMethodChoice] = useState('online'); // 'online' (auto SasPay) ou 'manual'
+  const [manualRef, setManualRef] = useState('');
+  const [manualSubmitted, setManualSubmitted] = useState(false);
   const containerRef = useRef();
   const stageRef = useRef();
 
@@ -299,6 +302,7 @@ export default function InvitePage({ params }) {
       photoUrl: guestPhoto,
       additionalData: JSON.stringify(additionalData),
       saveToCloud,
+      transactionRef: manualRef ? manualRef.trim() : null,
     };
 
     if (uploadBadge && stageRef.current) {
@@ -334,6 +338,7 @@ export default function InvitePage({ params }) {
     guestPhoto,
     additionalData,
     resolveGuestName,
+    manualRef,
   ]);
 
   const handlePhoneChange = (e) => {
@@ -567,9 +572,47 @@ export default function InvitePage({ params }) {
     }
   };
 
+  const handleManualPaymentSubmit = async () => {
+    if (!validateStep1()) return;
+    if (!manualRef || !manualRef.trim()) {
+      toast.error("Veuillez saisir votre numéro de référence Mobile Money.");
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const regRes = await registerGuest({ saveToCloud: true, uploadBadge: true });
+      if (regRes.ok || regRes.duplicate) {
+        setManualSubmitted(true);
+        toast.success("Référence enregistrée ! Votre pass sera validé après vérification par l'organisateur.", {
+          duration: 6000,
+          icon: '⏳',
+        });
+      } else {
+        toast.error(regRes.error || "Erreur lors de l'enregistrement");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors de l'enregistrement de la référence");
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!validateStep1()) return;
+
+    if (event.isPaid && !isPaidSuccess && !manualSubmitted) {
+      if (paymentMethodChoice === 'online') {
+        toast.error("Veuillez procéder au paiement en ligne pour débloquer votre pass.");
+        handleSaspayPayment();
+        return;
+      } else {
+        toast.error("Veuillez saisir et enregistrer votre référence de paiement.");
+        return;
+      }
+    }
 
     setSharingPlatform('download');
     setDuplicateGuest(null);
@@ -604,6 +647,11 @@ export default function InvitePage({ params }) {
   };
 
   const handleShare = async (platform) => {
+    if (event.isPaid && !isPaidSuccess && !manualSubmitted) {
+      toast.error("Veuillez valider votre paiement avant de partager votre pass.");
+      return;
+    }
+
     setSharingPlatform(platform);
     setDuplicateGuest(null);
 
@@ -1287,62 +1335,157 @@ export default function InvitePage({ params }) {
 
                 {/* Payment Section (If Paid Event) */}
                 {event.isPaid && (
-                  <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-slate-900 space-y-3.5 shadow-sm">
+                  <div className="p-5 rounded-2xl bg-amber-50/90 border border-amber-200 text-slate-900 space-y-4 shadow-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Frais d'inscription</span>
                       <span className="text-lg font-black text-amber-700">{event.price} FCFA</span>
                     </div>
 
                     {isPaidSuccess ? (
-                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-xs font-bold">
-                        <FiCheckCircle size={18} className="text-emerald-600 shrink-0" />
-                        <span>Paiement validé avec succès ! Votre pass officiel est débloqué.</span>
+                      <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold">
+                        <FiCheckCircle size={20} className="text-emerald-600 shrink-0" />
+                        <div>
+                          <p className="font-extrabold text-emerald-900">Paiement validé avec succès !</p>
+                          <p className="text-[11px] font-normal text-emerald-700">Votre pass officiel est débloqué et prêt à être téléchargé.</p>
+                        </div>
                       </div>
                     ) : (
                       <>
-                        {/* SasPay Instant Online Payment Button */}
-                        <button
-                          type="button"
-                          onClick={handleSaspayPayment}
-                          disabled={isSaspayLoading}
-                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:opacity-95 active:scale-[0.99] text-white font-extrabold text-xs shadow-lg shadow-emerald-600/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          {isSaspayLoading ? (
-                            <div className="flex items-center gap-2">
-                              <Loader className="!h-4 !w-4 !text-white" />
-                              <span>Préparation du paiement...</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2 text-sm">
-                                <FiShield size={16} />
-                                <span>Payer en ligne via SasPay</span>
-                              </div>
-                              <span className="text-[10px] text-white/80 font-normal">
-                                MTN • Orange • Moov • Wave • Carte Bancaire
-                              </span>
-                            </>
-                          )}
-                        </button>
-
-                        <div className="relative py-1 flex items-center justify-center">
-                          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-amber-200" /></div>
-                          <span className="relative bg-amber-50 px-2 text-[9px] font-bold text-amber-600 uppercase tracking-wider">Ou règlement direct</span>
-                        </div>
-
-                        <p className="text-[11px] text-slate-600 leading-tight">
-                          Numéro Mobile Money de l'organisateur : <strong className="text-slate-900 bg-white px-1.5 py-0.5 rounded border border-amber-200 font-mono">{event.paymentNumber || 'N/A'}</strong>
-                        </p>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
-                            Référence de transaction manuelle
+                        {/* Selector Tabs: Auto vs Manual */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
+                            Choisissez votre mode de règlement :
                           </label>
-                          <input
-                            type="text"
-                            placeholder="N° de référence si payé manuellement"
-                            className="w-full bg-white border border-amber-200 rounded-xl py-2 px-3 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
-                          />
+                          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/80 rounded-xl">
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethodChoice('online')}
+                              className={cn(
+                                "py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                                paymentMethodChoice === 'online'
+                                  ? "bg-white text-emerald-800 shadow-sm font-black"
+                                  : "text-slate-600 hover:text-slate-900"
+                              )}
+                            >
+                              <FiZap size={14} className={paymentMethodChoice === 'online' ? "text-emerald-600" : ""} />
+                              <span>⚡ En ligne (Auto)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethodChoice('manual')}
+                              className={cn(
+                                "py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                                paymentMethodChoice === 'manual'
+                                  ? "bg-white text-indigo-800 shadow-sm font-black"
+                                  : "text-slate-600 hover:text-slate-900"
+                              )}
+                            >
+                              <FiPhone size={14} className={paymentMethodChoice === 'manual' ? "text-indigo-600" : ""} />
+                              <span>📱 Virement Manuel</span>
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Option 1: Automatic Online Payment via SasPay */}
+                        {paymentMethodChoice === 'online' && (
+                          <div className="space-y-3 pt-1 animate-in fade-in duration-200">
+                            <div className="p-3 bg-white/80 rounded-xl border border-amber-200/60 text-slate-600 text-[11px] space-y-1">
+                              <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Validation 100% instantanée
+                              </p>
+                              <p>
+                                Règlement direct et sécurisé par Mobile Money ou Carte. Dès validation, votre pass est débloqué immédiatement sans attente.
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleSaspayPayment}
+                              disabled={isSaspayLoading}
+                              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:opacity-95 active:scale-[0.99] text-white font-extrabold text-xs shadow-lg shadow-emerald-600/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                            >
+                              {isSaspayLoading ? (
+                                <div className="flex items-center gap-2">
+                                  <Loader className="!h-4 !w-4 !text-white" />
+                                  <span>Génération du paiement sécurisé...</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-2 text-sm font-black">
+                                    <FiShield size={16} />
+                                    <span>Payer {event.price} FCFA en ligne</span>
+                                  </div>
+                                  <span className="text-[10px] text-white/85 font-normal">
+                                    MTN • Orange • Moov • Wave • Carte Bancaire
+                                  </span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Option 2: Manual Direct Mobile Money Payment */}
+                        {paymentMethodChoice === 'manual' && (
+                          <div className="space-y-3 pt-1 animate-in fade-in duration-200">
+                            <div className="p-3 bg-white/90 rounded-xl border border-amber-200 space-y-2">
+                              <p className="text-[11px] text-slate-700">
+                                <strong>Étape 1 :</strong> Transférez <strong>{event.price} FCFA</strong> au numéro de l'organisateur :
+                              </p>
+                              <div className="flex items-center justify-between bg-amber-50/60 px-3 py-2 rounded-lg border border-amber-200 font-mono text-xs font-black text-slate-900">
+                                <span>{event.paymentNumber || 'Contactez l\'organisateur'}</span>
+                                {event.paymentNumber && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(event.paymentNumber);
+                                      toast.success("Numéro copié !");
+                                    }}
+                                    className="text-[10px] text-[#3B52E8] hover:underline font-sans cursor-pointer font-bold"
+                                  >
+                                    Copier
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-slate-700 uppercase block">
+                                <strong>Étape 2 :</strong> Référence de transaction reçue par SMS <span className="text-rose-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={manualRef}
+                                onChange={(e) => setManualRef(e.target.value)}
+                                placeholder="ex: TXN-92837493 ou ID SMS de paiement"
+                                className="w-full bg-white border border-amber-200 rounded-xl py-2 px-3 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+
+                            {manualSubmitted ? (
+                              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-2">
+                                <FiInfo size={16} className="text-blue-600 shrink-0" />
+                                <span>Référence enregistrée ! En attente de validation par l'organisateur.</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={handleManualPaymentSubmit}
+                                disabled={isRegistering}
+                                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                              >
+                                {isRegistering ? (
+                                  <Loader className="!h-4 !w-4 !text-white" />
+                                ) : (
+                                  <>
+                                    <FiCheck size={14} />
+                                    <span>Valider avec cette référence</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

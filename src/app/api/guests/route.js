@@ -6,7 +6,7 @@ import { neon } from '@neondatabase/serverless';
 
 export async function POST(request) {
   try {
-    const { id, eventId, name, phone, photoUrl, generatedImageUrl, additionalData, saveToCloud } = await request.json();
+    const { id, eventId, name, phone, photoUrl, generatedImageUrl, additionalData, saveToCloud, transactionRef } = await request.json();
 
     const trimmedPhone = phone ? String(phone).trim() : '';
 
@@ -117,12 +117,14 @@ export async function POST(request) {
       const guestId = id || uuidv4();
       let guest = null;
 
+      const finalTxRef = transactionRef ? String(transactionRef).trim() : null;
+
       // Create guest - try Neon HTTP first if applicable, with Prisma fallback
       const createViaNeon = async () => {
         const sql = neon(dbUrl);
         const rows = await sql`
-          INSERT INTO "Guest" (id, "eventId", name, phone, "photoUrl", "generatedImageUrl", "additionalData", status, "submittedAt")
-          VALUES (${guestId}, ${eventId}, ${name ? String(name).trim() : 'Invité'}, ${trimmedPhone}, ${finalPhotoUrl}, ${finalGeneratedUrl}, ${additionalData || '{}'}, 'PENDING', NOW())
+          INSERT INTO "Guest" (id, "eventId", name, phone, "photoUrl", "generatedImageUrl", "additionalData", status, "transactionRef", "submittedAt")
+          VALUES (${guestId}, ${eventId}, ${name ? String(name).trim() : 'Invité'}, ${trimmedPhone}, ${finalPhotoUrl}, ${finalGeneratedUrl}, ${additionalData || '{}'}, 'PENDING', ${finalTxRef}, NOW())
           RETURNING *
         `;
         return rows[0];
@@ -139,6 +141,7 @@ export async function POST(request) {
             generatedImageUrl: finalGeneratedUrl,
             additionalData: additionalData || '{}',
             status: 'PENDING',
+            transactionRef: finalTxRef,
           },
         });
       };
