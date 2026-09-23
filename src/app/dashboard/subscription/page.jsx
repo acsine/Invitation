@@ -8,8 +8,11 @@ import { toast } from 'react-hot-toast';
 import cn from 'classnames';
 import { FiCheck, FiStar, FiZap, FiTarget, FiMessageSquare, FiShield } from 'react-icons/fi';
 
+import { useSearchParams } from 'next/navigation';
+
 export default function SubscriptionPage() {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
+  const searchParams = useSearchParams();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [subLoading, setSubLoading] = useState(null);
@@ -27,12 +30,55 @@ export default function SubscriptionPage() {
       });
   }, []);
 
+  // Handle return from SasPay hosted checkout
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status === 'success') {
+      toast.success("Paiement réussi ! Votre abonnement a été mis à jour avec succès.", {
+        duration: 6000,
+        icon: '🎉',
+      });
+      if (typeof update === 'function') {
+        update();
+      }
+    }
+  }, [searchParams, update]);
+
   const handleSubscribe = async (planId) => {
+    const selectedPlan = plans.find(p => p.id === planId);
+    if (!selectedPlan || selectedPlan.price <= 0) {
+      toast.error("Ce plan est gratuit.");
+      return;
+    }
+
     setSubLoading(planId);
-    // Simulate redirection delay
-    await new Promise(r => setTimeout(r, 1000));
-    toast.success("Redirection vers le paiement sécurisé...");
-    setSubLoading(null);
+    try {
+      const res = await fetch('/api/payments/saspay/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'SUBSCRIPTION',
+          planId: planId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la préparation du paiement');
+      }
+
+      if (data.checkout_url) {
+        toast.loading("Redirection vers SasPay (Mobile Money & Carte)...");
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error("Lien de paiement non reçu.");
+      }
+    } catch (err) {
+      console.error('Subscription checkout error:', err);
+      toast.error(err.message || 'Impossible d\'initier le paiement');
+      setSubLoading(null);
+    }
   };
 
   if (loading) return (

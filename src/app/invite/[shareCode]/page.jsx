@@ -244,8 +244,21 @@ export default function InvitePage({ params }) {
   const [isChecking, setIsChecking] = useState(false);
   const [registeredGuestId, setRegisteredGuestId] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isSaspayLoading, setIsSaspayLoading] = useState(false);
+  const [isPaidSuccess, setIsPaidSuccess] = useState(false);
   const containerRef = useRef();
   const stageRef = useRef();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('status') === 'paid') {
+        setIsPaidSuccess(true);
+        setCurrentStep(3);
+        toast.success("Paiement en ligne validé avec succès !", { duration: 6000, icon: '🎉' });
+      }
+    }
+  }, []);
 
   const resolveGuestName = useCallback(() => {
     const trimmed = String(guestName || '').trim();
@@ -503,6 +516,54 @@ export default function InvitePage({ params }) {
       toast.error('Erreur lors de l\'inscription');
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleSaspayPayment = async () => {
+    if (!validateStep1()) return;
+
+    setIsSaspayLoading(true);
+    try {
+      let currentGuestId = registeredGuestId;
+      if (!currentGuestId) {
+        const regRes = await registerGuest({ saveToCloud: false });
+        if (regRes.ok) {
+          currentGuestId = regRes.guestId;
+        } else if (regRes.duplicate) {
+          currentGuestId = regRes.guest?.id;
+        } else {
+          throw new Error(regRes.error || "Impossible d'enregistrer vos informations");
+        }
+      }
+
+      const res = await fetch('/api/payments/saspay/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'EVENT_REGISTRATION',
+          eventId: event.id,
+          guestId: currentGuestId,
+          guestName: resolveGuestName(),
+          guestPhone,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la préparation du paiement');
+      }
+
+      if (data.checkout_url) {
+        toast.loading("Redirection vers la passerelle sécurisée SasPay...");
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error("Lien de paiement non reçu.");
+      }
+    } catch (err) {
+      console.error('Saspay event payment error:', err);
+      toast.error(err.message || 'Erreur lors du paiement');
+    } finally {
+      setIsSaspayLoading(false);
     }
   };
 
@@ -1226,25 +1287,64 @@ export default function InvitePage({ params }) {
 
                 {/* Payment Section (If Paid Event) */}
                 {event.isPaid && (
-                  <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-slate-900 space-y-3">
+                  <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-slate-900 space-y-3.5 shadow-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Frais d'inscription</span>
                       <span className="text-lg font-black text-amber-700">{event.price} FCFA</span>
                     </div>
-                    <p className="text-xs text-slate-600">
-                      Veuillez effectuer le règlement via Mobile Money au numéro : <strong className="text-slate-900 bg-white px-2 py-0.5 rounded border border-amber-200 font-mono">{event.paymentNumber || 'N/A'}</strong>
-                    </p>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">
-                        Référence de transaction <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="N° de référence du paiement"
-                        required
-                        className="w-full bg-white border border-amber-200 rounded-xl py-2.5 px-3.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
+
+                    {isPaidSuccess ? (
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-xs font-bold">
+                        <FiCheckCircle size={18} className="text-emerald-600 shrink-0" />
+                        <span>Paiement validé avec succès ! Votre pass officiel est débloqué.</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* SasPay Instant Online Payment Button */}
+                        <button
+                          type="button"
+                          onClick={handleSaspayPayment}
+                          disabled={isSaspayLoading}
+                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:opacity-95 active:scale-[0.99] text-white font-extrabold text-xs shadow-lg shadow-emerald-600/20 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {isSaspayLoading ? (
+                            <div className="flex items-center gap-2">
+                              <Loader className="!h-4 !w-4 !text-white" />
+                              <span>Préparation du paiement...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 text-sm">
+                                <FiShield size={16} />
+                                <span>Payer en ligne via SasPay</span>
+                              </div>
+                              <span className="text-[10px] text-white/80 font-normal">
+                                MTN • Orange • Moov • Wave • Carte Bancaire
+                              </span>
+                            </>
+                          )}
+                        </button>
+
+                        <div className="relative py-1 flex items-center justify-center">
+                          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-amber-200" /></div>
+                          <span className="relative bg-amber-50 px-2 text-[9px] font-bold text-amber-600 uppercase tracking-wider">Ou règlement direct</span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-600 leading-tight">
+                          Numéro Mobile Money de l'organisateur : <strong className="text-slate-900 bg-white px-1.5 py-0.5 rounded border border-amber-200 font-mono">{event.paymentNumber || 'N/A'}</strong>
+                        </p>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-700 uppercase block mb-1">
+                            Référence de transaction manuelle
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="N° de référence si payé manuellement"
+                            className="w-full bg-white border border-amber-200 rounded-xl py-2 px-3 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
