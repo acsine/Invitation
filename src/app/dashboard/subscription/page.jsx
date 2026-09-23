@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import Button from '@/components/ui/Button';
 import Loader from '@/components/Loader';
@@ -10,7 +10,7 @@ import { FiCheck, FiStar, FiZap, FiTarget, FiMessageSquare, FiShield } from 'rea
 
 import { useSearchParams } from 'next/navigation';
 
-export default function SubscriptionPage() {
+function SubscriptionContent() {
   const { data: session, update } = useSession();
   const searchParams = useSearchParams();
   const [plans, setPlans] = useState([]);
@@ -210,5 +210,24 @@ export default function SubscriptionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SubscriptionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-96 items-center justify-center animate-in fade-in duration-500">
+          <div className="flex flex-col items-center gap-4">
+            <Loader className="!h-10 !w-10 !text-primary" />
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              Chargement des offres...
+            </span>
+          </div>
+        </div>
+      }
+    >
+      <SubscriptionContent />
+    </Suspense>
   );
 }
