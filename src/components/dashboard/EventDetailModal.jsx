@@ -21,14 +21,45 @@ import {
   FiShield, 
   FiPhone, 
   FiCreditCard,
-  FiMaximize2
+  FiMaximize2,
+  FiEdit2
 } from 'react-icons/fi';
 
 export default function EventDetailModal({ event, isOpen, onClose }) {
   const [copied, setCopied] = useState(false);
   const [showFullPoster, setShowFullPoster] = useState(false);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState(event?.price || 0);
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
 
   if (!event) return null;
+
+  const handleUpdatePrice = async () => {
+    const parsed = parseFloat(priceInput);
+    if (isNaN(parsed) || parsed < 200) {
+      toast.error('Le montant minimum pour une invitation payante est de 200 FCFA');
+      return;
+    }
+    setIsSavingPrice(true);
+    try {
+      const res = await fetch(`/api/events/${event.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price: parsed, isPaid: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la mise à jour');
+      }
+      event.price = parsed;
+      setIsEditingPrice(false);
+      toast.success(`Tarif mis à jour : ${parsed.toLocaleString('fr-FR')} FCFA`);
+    } catch (err) {
+      toast.error(err.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setIsSavingPrice(false);
+    }
+  };
 
   const shareUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/invite/${event.shareCode}`
@@ -239,11 +270,63 @@ export default function EventDetailModal({ event, isOpen, onClose }) {
 
                   {event.isPaid && (
                     <>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 font-medium">Prix du billet / passe:</span>
-                        <span className="text-base font-black text-slate-900">
-                          {Number(event.price || 0).toLocaleString('fr-FR')} FCFA
-                        </span>
+                      <div className="flex flex-col gap-2 pt-1 border-t border-slate-100">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 font-medium">Prix du billet / passe :</span>
+                          {!isEditingPrice && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-base font-black text-slate-900">
+                                {Number(event.price || 0).toLocaleString('fr-FR')} FCFA
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPriceInput(event.price || 200);
+                                  setIsEditingPrice(true);
+                                }}
+                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors"
+                                title="Modifier le tarif"
+                              >
+                                <FiEdit2 size={13} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {isEditingPrice && (
+                          <div className="space-y-2 p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                            <label className="text-[11px] font-bold text-slate-700">
+                              Nouveau tarif (minimum 200 FCFA requis par SasPay) :
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="200"
+                                step="50"
+                                value={priceInput}
+                                onChange={(e) => setPriceInput(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg outline-none focus:border-indigo-600 bg-white"
+                                placeholder="ex: 500"
+                              />
+                              <button
+                                type="button"
+                                disabled={isSavingPrice}
+                                onClick={handleUpdatePrice}
+                                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 disabled:opacity-50"
+                              >
+                                {isSavingPrice ? '...' : 'Valider'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isSavingPrice}
+                                onClick={() => setIsEditingPrice(false)}
+                                className="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-lg transition-colors shrink-0"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {event.paymentMethod && (

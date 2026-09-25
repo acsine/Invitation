@@ -31,6 +31,10 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Veuillez saisir le nom de l\'événement' }, { status: 400 });
     }
 
+    if (isPaid && (parseFloat(price) || 0) < 200) {
+      return NextResponse.json({ error: 'Le tarif minimum pour un événement payant est de 200 FCFA (requis par la passerelle de paiement)' }, { status: 400 });
+    }
+
     // Handle base64 image upload safely
     let finalImageUrl = backgroundImageUrl || null;
     if (backgroundImageUrl && backgroundImageUrl.startsWith('data:image')) {

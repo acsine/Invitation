@@ -153,8 +153,8 @@ export default function NewEventPage() {
       toast.error('La date de fin ne peut pas être antérieure à la date de début');
       return;
     }
-    if (isPaid && (!price || parseFloat(price) <= 0)) {
-      toast.error('Veuillez définir un tarif valide pour l\'événement payant');
+    if (isPaid && (!price || parseFloat(price) < 200)) {
+      toast.error('Pour un événement payant, le tarif minimum requis par le paiement en ligne est de 200 FCFA');
       return;
     }
     setActiveTab(2);
@@ -173,6 +173,11 @@ export default function NewEventPage() {
     const todayStr = getTodayString();
     if (startDate && startDate < todayStr) {
       toast.error('La date de début ne peut pas être une date passée');
+      setActiveTab(1);
+      return;
+    }
+    if (isPaid && (!price || parseFloat(price) < 200)) {
+      toast.error('Pour une invitation payante, le tarif minimum requis est de 200 FCFA');
       setActiveTab(1);
       return;
     }
@@ -390,7 +395,13 @@ export default function NewEventPage() {
                   <input 
                     type="checkbox" 
                     checked={isPaid} 
-                    onChange={(e) => setIsPaid(e.target.checked)} 
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsPaid(checked);
+                      if (checked && (!price || parseFloat(price) < 200)) {
+                        setPrice(500);
+                      }
+                    }} 
                     className="sr-only peer" 
                   />
                   <div className="w-12 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#FF6500]"></div>
@@ -406,11 +417,16 @@ export default function NewEventPage() {
                      </label>
                      <input 
                        type="number" 
+                       min="200"
+                       step="50"
                        value={price} 
                        onChange={(e) => setPrice(e.target.value)}
-                       placeholder="ex: 5000"
+                       placeholder="ex: 5000 (min 200 FCFA)"
                        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3.5 text-xs font-bold text-slate-900 outline-none focus:border-[#FF6500]"
                      />
+                     <p className="text-[11px] text-slate-500 font-medium">
+                       Montant minimum requis par SasPay : <span className="font-bold text-slate-700">200 FCFA</span>
+                     </p>
                   </div>
                   <div className="space-y-1.5">
                      <label className="block text-xs font-black uppercase tracking-wider text-slate-800">

@@ -104,6 +104,12 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Cet événement est gratuit' }, { status: 400 });
       }
 
+      if (event.price < 200) {
+        return NextResponse.json({ 
+          error: `Le montant minimum pour un paiement via SasPay est de 200 FCFA (tarif actuel : ${event.price} FCFA). Veuillez modifier le tarif de l'événement.` 
+        }, { status: 400 });
+      }
+
       const returnUrl = `${appUrl}/invite/${event.shareCode}?status=paid&guest_id=${encodeURIComponent(guestId)}`;
 
       const checkoutData = await createCheckoutSession({

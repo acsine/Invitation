@@ -59,7 +59,18 @@ export async function createCheckoutSession({
 
   if (!response.ok) {
     console.error('SasPay createCheckoutSession error:', data);
-    const errorMsg = data?.message || data?.detail || JSON.stringify(data);
+    let errorMsg = data?.message || data?.detail;
+    if (!errorMsg && data?.error) {
+      if (typeof data.error === 'string') {
+        errorMsg = data.error;
+      } else if (typeof data.error === 'object') {
+        const values = Object.values(data.error).flat();
+        errorMsg = values.join(' ');
+      }
+    }
+    if (!errorMsg) {
+      errorMsg = JSON.stringify(data);
+    }
     throw new Error(`Erreur SasPay (${response.status}): ${errorMsg}`);
   }
 
